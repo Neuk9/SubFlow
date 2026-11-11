@@ -26,7 +26,10 @@
 ```bash
 git clone https://github.com/Neuk9/SubFlow.git
 cd SubFlow
+./gradlew installHooks
 ```
+
+`installHooks`는 커밋 메시지 컨벤션을 검사하는 Git 훅을 설치합니다. 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고해 주세요.
 
 ### 3. 데이터베이스 실행
 
