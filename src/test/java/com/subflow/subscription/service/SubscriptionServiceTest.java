@@ -17,9 +17,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.Optional;
 
@@ -43,10 +45,13 @@ class SubscriptionServiceTest {
     private ExpenseCalculator expenseCalculator;
 
     @Mock
-    private CurrentUserProvider currentUserProvider;
+    private SubscriptionFinder subscriptionFinder;
+
+    @Spy
+    private Clock clock = Clock.systemDefaultZone();
 
     @InjectMocks
-    private SubscriptionService subscriptionService;
+    private SubscriptionCommandService subscriptionCommandService;
 
     @Test
     @DisplayName("구독 등록 시 다음 결제일과 월 환산 지출이 자동 계산되어 저장된다")
@@ -72,7 +77,7 @@ class SubscriptionServiceTest {
                 .willReturn(calculatedNextBilling);
         given(expenseCalculator.calculateMonthlyExpense(eq(fee), eq(BillingCycle.MONTHLY)))
                 .willReturn(monthlyExpense);
-        given(currentUserProvider.getCurrentUserEmail()).willReturn("test@subflow.dev");
+        given(subscriptionFinder.currentOwnerEmail()).willReturn("test@subflow.dev");
 
         Subscription saved = Subscription.builder()
                 .serviceName(request.getServiceName())
@@ -90,7 +95,7 @@ class SubscriptionServiceTest {
         given(subscriptionRepository.save(any(Subscription.class))).willReturn(saved);
 
         // when
-        SubscriptionResponse response = subscriptionService.createSubscription(request);
+        SubscriptionResponse response = subscriptionCommandService.createSubscription(request);
 
         // then
         assertThat(response.getServiceName()).isEqualTo("넷플릭스 프리미엄");
@@ -115,15 +120,13 @@ class SubscriptionServiceTest {
                 .ownerEmail("test@subflow.dev")
                 .build();
 
-        given(currentUserProvider.getCurrentUserEmail()).willReturn("test@subflow.dev");
-        given(subscriptionRepository.findByIdAndOwnerEmail(1L, "test@subflow.dev"))
-                .willReturn(Optional.of(subscription));
+        given(subscriptionFinder.findOwnedById(1L)).willReturn(subscription);
 
         LocalDate futureCancelDate = LocalDate.now().plusDays(20);
         SubscriptionCancelRequest cancelRequest = new SubscriptionCancelRequest(futureCancelDate);
 
         // when
-        SubscriptionResponse response = subscriptionService.cancelSubscription(1L, cancelRequest);
+        SubscriptionResponse response = subscriptionCommandService.cancelSubscription(1L, cancelRequest);
 
         // then
         assertThat(response.getStatus()).isEqualTo(SubscriptionStatus.EXPIRING);
@@ -148,9 +151,7 @@ class SubscriptionServiceTest {
                 .ownerEmail("test@subflow.dev")
                 .build();
 
-        given(currentUserProvider.getCurrentUserEmail()).willReturn("test@subflow.dev");
-        given(subscriptionRepository.findByIdAndOwnerEmail(1L, "test@subflow.dev"))
-                .willReturn(Optional.of(subscription));
+        given(subscriptionFinder.findOwnedById(1L)).willReturn(subscription);
         given(expenseCalculator.calculateMonthlyExpense(eq(BigDecimal.valueOf(17000)), eq(BillingCycle.MONTHLY)))
                 .willReturn(BigDecimal.valueOf(17000));
 
@@ -165,7 +166,7 @@ class SubscriptionServiceTest {
                 .build();
 
         // when
-        SubscriptionResponse response = subscriptionService.updateSubscription(1L, request);
+        SubscriptionResponse response = subscriptionCommandService.updateSubscription(1L, request);
 
         // then
         assertThat(response.getNextBillingDate()).isEqualTo(alreadyAdvanced);

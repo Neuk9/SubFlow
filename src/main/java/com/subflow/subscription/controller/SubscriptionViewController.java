@@ -2,7 +2,7 @@ package com.subflow.subscription.controller;
 
 import com.subflow.subscription.domain.BillingCycle;
 import com.subflow.subscription.domain.Category;
-import com.subflow.subscription.service.SubscriptionService;
+import com.subflow.subscription.service.SubscriptionQueryService;
 import com.subflow.subscription.service.SubscriptionStatisticsService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Controller;
@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 @RequiredArgsConstructor
 public class SubscriptionViewController {
 
-    private final SubscriptionService subscriptionService;
+    private final SubscriptionQueryService subscriptionQueryService;
     private final SubscriptionStatisticsService statisticsService;
 
     @GetMapping("/")
@@ -21,7 +21,7 @@ public class SubscriptionViewController {
         model.addAttribute("categories", Category.values());
         model.addAttribute("billingCycles", BillingCycle.values());
         model.addAttribute("summary", statisticsService.getSummary());
-        model.addAttribute("subscriptions", subscriptionService.getSubscriptions(null));
+        model.addAttribute("subscriptions", subscriptionQueryService.getSubscriptions(null));
         return "index";
     }
 }
