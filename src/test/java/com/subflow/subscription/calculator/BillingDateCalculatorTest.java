@@ -1,5 +1,6 @@
 package com.subflow.subscription.calculator;
 
+import com.subflow.global.exception.BusinessException;
 import com.subflow.subscription.domain.BillingCycle;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -8,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class BillingDateCalculatorTest {
 
@@ -87,6 +89,29 @@ class BillingDateCalculatorTest {
 
             LocalDate afterFeb = calculator.calculateNextCycleDate(BillingCycle.MONTHLY, nextCycle, 31);
             assertThat(afterFeb).isEqualTo(LocalDate.of(2026, 3, 31));
+        }
+
+        @Test
+        @DisplayName("결제일이 31일이면 매월 말일로만 보정되고 다시 31일로 복구된다")
+        void endOfMonthIsNotPermanentlyShifted() {
+            LocalDate jan = LocalDate.of(2026, 1, 31);
+
+            LocalDate feb = calculator.calculateNextCycleDate(BillingCycle.MONTHLY, jan, 31);
+            LocalDate mar = calculator.calculateNextCycleDate(BillingCycle.MONTHLY, feb, 31);
+            LocalDate apr = calculator.calculateNextCycleDate(BillingCycle.MONTHLY, mar, 31);
+
+            assertThat(feb).isEqualTo(LocalDate.of(2026, 2, 28));
+            assertThat(mar).isEqualTo(LocalDate.of(2026, 3, 31));
+            assertThat(apr).isEqualTo(LocalDate.of(2026, 4, 30));
+        }
+
+        @Test
+        @DisplayName("매월 결제인데 결제일이 없으면 예외가 발생한다")
+        void monthlyWithoutBillingDayThrows() {
+            LocalDate jan = LocalDate.of(2026, 1, 31);
+
+            assertThatThrownBy(() -> calculator.calculateNextCycleDate(BillingCycle.MONTHLY, jan, null))
+                    .isInstanceOf(BusinessException.class);
         }
     }
 

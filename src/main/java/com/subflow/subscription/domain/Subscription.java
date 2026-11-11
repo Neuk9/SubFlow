@@ -108,6 +108,10 @@ public class Subscription extends BaseTimeEntity {
     }
 
     public void scheduleCancellation(LocalDate scheduledDate) {
+        requireNotCanceled("해지 예약");
+        if (this.status == SubscriptionStatus.EXPIRING) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 해지가 예약된 구독입니다.");
+        }
         if (scheduledDate == null || scheduledDate.isBefore(LocalDate.now())) {
             throw new BusinessException(ErrorCode.INVALID_DATE_RANGE, "해지 예정일은 오늘 이후여야 합니다.");
         }
@@ -116,16 +120,26 @@ public class Subscription extends BaseTimeEntity {
     }
 
     public void cancelImmediately() {
+        requireNotCanceled("해지");
         this.status = SubscriptionStatus.CANCELED;
         this.cancellationScheduledAt = LocalDate.now();
     }
 
     public void pause() {
+        requireNotCanceled("일시 정지");
         this.status = SubscriptionStatus.PAUSED;
     }
 
     public void resume(LocalDate calculatedNextBillingDate) {
+        requireNotCanceled("재개");
         this.status = SubscriptionStatus.ACTIVE;
         this.nextBillingDate = calculatedNextBillingDate;
+    }
+
+    private void requireNotCanceled(String action) {
+        if (this.status == SubscriptionStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.ALREADY_CANCELED,
+                    String.format("해지된 구독은 %s할 수 없습니다.", action));
+        }
     }
 }

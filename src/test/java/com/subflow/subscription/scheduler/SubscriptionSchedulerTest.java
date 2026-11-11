@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -158,5 +159,34 @@ class SubscriptionSchedulerTest {
         assertThat(processed).isGreaterThanOrEqualTo(2);
         assertThat(subscription.getNextBillingDate()).isAfter(today);
         verify(billingRecordRepository, times(processed)).save(any(BillingRecord.class));
+    }
+
+    @Test
+    @DisplayName("같은 날 알림 배치를 다시 돌려도 알림이 중복 생성되지 않는다")
+    void notificationsAreNotDuplicated() {
+        LocalDate today = LocalDate.now();
+        LocalDate nextBilling = today.plusDays(3);
+
+        Subscription subscription = Subscription.builder()
+                .serviceName("유튜브")
+                .category(Category.OTT)
+                .fee(BigDecimal.valueOf(14900))
+                .billingCycle(BillingCycle.MONTHLY)
+                .billingDay(nextBilling.getDayOfMonth())
+                .startDate(today.minusMonths(1))
+                .nextBillingDate(nextBilling)
+                .monthlyExpense(BigDecimal.valueOf(14900))
+                .remindDaysBefore(3)
+                .build();
+
+        given(subscriptionRepository.findAllByStatusOrderByNextBillingDateAsc(SubscriptionStatus.ACTIVE))
+                .willReturn(List.of(subscription));
+        given(notificationHistoryRepository.existsBySubscriptionIdAndTypeAndSentAtBetween(
+                any(), any(), any(), any())).willReturn(true);
+
+        int count = subscriptionScheduler.sendUpcomingPaymentNotifications();
+
+        assertThat(count).isZero();
+        verify(notificationHistoryRepository, never()).save(any(NotificationHistory.class));
     }
 }
