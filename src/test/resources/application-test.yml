@@ -1,4 +1,6 @@
 spring:
+  flyway:
+    enabled: false
   datasource:
     url: jdbc:h2:mem:subflow-test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
     username: sa
@@ -9,6 +11,10 @@ spring:
     properties:
       hibernate:
         format_sql: false
+
+subflow:
+  auth:
+    enabled: false
 
 logging:
   level:
