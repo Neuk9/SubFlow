@@ -2,7 +2,7 @@ package com.subflow.subscription.service;
 
 import com.subflow.global.exception.BusinessException;
 import com.subflow.global.exception.ErrorCode;
-import com.subflow.subscription.calculator.BillingDateCalculator;
+import com.subflow.global.auth.CurrentUserProvider;
 import com.subflow.subscription.domain.Subscription;
 import com.subflow.subscription.domain.SubscriptionStatus;
 import com.subflow.subscription.dto.CalendarEventDto;
@@ -24,7 +24,7 @@ import java.util.List;
 public class SubscriptionCalendarService {
 
     private final SubscriptionRepository subscriptionRepository;
-    private final BillingDateCalculator billingDateCalculator;
+    private final CurrentUserProvider currentUserProvider;
 
     public List<CalendarEventDto> getMonthlyEvents(int year, int month) {
         if (month < 1 || month > 12) {
@@ -35,10 +35,12 @@ public class SubscriptionCalendarService {
         }
 
         YearMonth yearMonth = YearMonth.of(year, month);
-        List<Subscription> subscriptions = subscriptionRepository.findAll().stream()
-                .filter(s -> s.getStatus() == SubscriptionStatus.ACTIVE
-                        || s.getStatus() == SubscriptionStatus.EXPIRING)
-                .toList();
+        String ownerEmail = currentUserProvider.getCurrentUserEmail();
+        List<Subscription> subscriptions = new ArrayList<>();
+        subscriptions.addAll(subscriptionRepository
+                .findAllByOwnerEmailAndStatusOrderByNextBillingDateAsc(ownerEmail, SubscriptionStatus.ACTIVE));
+        subscriptions.addAll(subscriptionRepository
+                .findAllByOwnerEmailAndStatusOrderByNextBillingDateAsc(ownerEmail, SubscriptionStatus.EXPIRING));
 
         List<CalendarEventDto> events = new ArrayList<>();
         for (Subscription subscription : subscriptions) {

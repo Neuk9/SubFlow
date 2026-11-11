@@ -1,10 +1,11 @@
 package com.subflow.subscription.service;
 
 import com.subflow.global.exception.BusinessException;
-import com.subflow.subscription.calculator.BillingDateCalculator;
+import com.subflow.global.auth.CurrentUserProvider;
 import com.subflow.subscription.domain.BillingCycle;
 import com.subflow.subscription.domain.Category;
 import com.subflow.subscription.domain.Subscription;
+import com.subflow.subscription.domain.SubscriptionStatus;
 import com.subflow.subscription.dto.CalendarEventDto;
 import com.subflow.subscription.repository.SubscriptionRepository;
 import org.junit.jupiter.api.DisplayName;
@@ -29,10 +30,18 @@ class SubscriptionCalendarServiceTest {
     private SubscriptionRepository subscriptionRepository;
 
     @Mock
-    private BillingDateCalculator billingDateCalculator;
+    private CurrentUserProvider currentUserProvider;
 
     @InjectMocks
     private SubscriptionCalendarService calendarService;
+
+    private void stubOwner(List<Subscription> subscriptions) {
+        given(currentUserProvider.getCurrentUserEmail()).willReturn("test@subflow.dev");
+        given(subscriptionRepository.findAllByOwnerEmailAndStatusOrderByNextBillingDateAsc(
+                "test@subflow.dev", SubscriptionStatus.ACTIVE)).willReturn(subscriptions);
+        given(subscriptionRepository.findAllByOwnerEmailAndStatusOrderByNextBillingDateAsc(
+                "test@subflow.dev", SubscriptionStatus.EXPIRING)).willReturn(List.of());
+    }
 
     private Subscription monthly(int billingDay) {
         return Subscription.builder()
@@ -50,7 +59,7 @@ class SubscriptionCalendarServiceTest {
     @Test
     @DisplayName("매월 구독은 해당 월 결제일 하루만 이벤트가 생성된다")
     void monthlyProducesSingleEvent() {
-        given(subscriptionRepository.findAll()).willReturn(List.of(monthly(25)));
+        stubOwner(List.of(monthly(25)));
 
         List<CalendarEventDto> events = calendarService.getMonthlyEvents(2026, 3);
 
@@ -61,7 +70,7 @@ class SubscriptionCalendarServiceTest {
     @Test
     @DisplayName("31일 결제 구독은 짧은 달에서 말일로 보정된다")
     void monthlyAdjustsToEndOfMonth() {
-        given(subscriptionRepository.findAll()).willReturn(List.of(monthly(31)));
+        stubOwner(List.of(monthly(31)));
 
         List<CalendarEventDto> events = calendarService.getMonthlyEvents(2026, 2);
 
@@ -81,7 +90,7 @@ class SubscriptionCalendarServiceTest {
                 .nextBillingDate(LocalDate.of(2026, 3, 2))
                 .monthlyExpense(BigDecimal.valueOf(1000))
                 .build();
-        given(subscriptionRepository.findAll()).willReturn(List.of(weekly));
+        stubOwner(List.of(weekly));
 
         List<CalendarEventDto> events = calendarService.getMonthlyEvents(2026, 3);
 

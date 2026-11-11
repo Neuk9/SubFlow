@@ -11,6 +11,10 @@ spring:
     hibernate:
       ddl-auto: create-drop
 
+subflow:
+  auth:
+    enabled: false
+
 logging:
   level:
     org.hibernate.SQL: debug

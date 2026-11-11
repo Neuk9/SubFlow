@@ -65,6 +65,9 @@ public class Subscription extends BaseTimeEntity {
     @Column(name = "remind_days_before", nullable = false)
     private Integer remindDaysBefore;
 
+    @Column(name = "owner_email", nullable = false, length = 255)
+    private String ownerEmail;
+
     @Column(length = 2000)
     private String memo;
 
@@ -72,7 +75,7 @@ public class Subscription extends BaseTimeEntity {
     public Subscription(String serviceName, Category category, BigDecimal fee,
                         BillingCycle billingCycle, Integer billingDay, LocalDate startDate,
                         LocalDate nextBillingDate, BigDecimal monthlyExpense,
-                        Integer remindDaysBefore, String memo) {
+                        Integer remindDaysBefore, String memo, String ownerEmail) {
         this.serviceName = serviceName;
         this.category = category != null ? category : Category.OTHER;
         this.fee = fee;
@@ -84,6 +87,7 @@ public class Subscription extends BaseTimeEntity {
         this.status = SubscriptionStatus.ACTIVE;
         this.remindDaysBefore = remindDaysBefore != null ? remindDaysBefore : 3;
         this.memo = memo;
+        this.ownerEmail = ownerEmail;
     }
 
     public void update(String serviceName, Category category, BigDecimal fee,

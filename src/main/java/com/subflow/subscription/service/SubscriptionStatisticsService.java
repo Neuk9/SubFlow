@@ -1,5 +1,6 @@
 package com.subflow.subscription.service;
 
+import com.subflow.global.auth.CurrentUserProvider;
 import com.subflow.subscription.domain.Category;
 import com.subflow.subscription.domain.Subscription;
 import com.subflow.subscription.domain.SubscriptionStatus;
@@ -23,22 +24,26 @@ import java.util.List;
 public class SubscriptionStatisticsService {
 
     private final SubscriptionRepository subscriptionRepository;
+    private final CurrentUserProvider currentUserProvider;
 
     public SubscriptionSummaryResponse getSummary() {
         LocalDate today = LocalDate.now();
-        BigDecimal totalMonthly = subscriptionRepository.sumMonthlyExpenseByStatus(SubscriptionStatus.ACTIVE);
+        String ownerEmail = currentUserProvider.getCurrentUserEmail();
+
+        BigDecimal totalMonthly = subscriptionRepository.sumMonthlyExpense(ownerEmail, SubscriptionStatus.ACTIVE);
         if (totalMonthly == null) {
             totalMonthly = BigDecimal.ZERO;
         }
         BigDecimal totalYearly = totalMonthly.multiply(BigDecimal.valueOf(12));
-        long activeCount = subscriptionRepository.countByStatus(SubscriptionStatus.ACTIVE);
+        long activeCount = subscriptionRepository.countByOwnerEmailAndStatus(ownerEmail, SubscriptionStatus.ACTIVE);
 
         LocalDate sevenDaysLater = today.plusDays(7);
         List<Subscription> upcomingList = subscriptionRepository.findUpcomingSubscriptions(
-                SubscriptionStatus.ACTIVE, today, sevenDaysLater);
+                ownerEmail, SubscriptionStatus.ACTIVE, today, sevenDaysLater);
         long upcomingCount = upcomingList.size();
 
-        List<Object[]> categoryData = subscriptionRepository.aggregateMonthlyExpenseByCategory(SubscriptionStatus.ACTIVE);
+        List<Object[]> categoryData = subscriptionRepository.aggregateMonthlyExpenseByCategory(
+                ownerEmail, SubscriptionStatus.ACTIVE);
         List<CategoryExpenseDto> categoryExpenses = new ArrayList<>();
 
         for (Object[] row : categoryData) {
@@ -74,7 +79,9 @@ public class SubscriptionStatisticsService {
     public List<SubscriptionResponse> getUpcomingSubscriptions(int daysAhead) {
         LocalDate today = LocalDate.now();
         LocalDate targetDate = today.plusDays(daysAhead);
-        return subscriptionRepository.findUpcomingSubscriptions(SubscriptionStatus.ACTIVE, today, targetDate).stream()
+        return subscriptionRepository.findUpcomingSubscriptions(
+                        currentUserProvider.getCurrentUserEmail(),
+                        SubscriptionStatus.ACTIVE, today, targetDate).stream()
                 .map(s -> SubscriptionResponse.from(s, today))
                 .toList();
     }
