@@ -4,6 +4,7 @@ SubFlow 팀의 협업 규칙입니다. 모든 팀원이 같은 방식으로 일�
 
 ## 목차
 
+- [시작하기 (팀원 필수)](#시작하기-팀원-필수)
 - [기본 원칙](#기본-원칙)
 - [이슈](#이슈)
 - [브랜치 전략](#브랜치-전략)
@@ -20,6 +21,24 @@ SubFlow 팀의 협업 규칙입니다. 모든 팀원이 같은 방식으로 일�
 3. **혼자 결정하지 않습니다.** 구조나 인터페이스에 영향을 주는 변경은 이슈에서 먼저 논의합니다.
 4. **모르면 물어봅니다.** PR 코멘트, Discussions, 단체 채팅 모두 좋습니다.
 
+## 시작하기 (팀원 필수)
+
+저장소를 클론한 뒤 **한 번만** 실행합니다.
+
+```bash
+git clone https://github.com/Neuk9/SubFlow.git
+cd SubFlow
+./gradlew installHooks
+```
+
+`installHooks`는 `.githooks/commit-msg`를 활성화합니다. 이후 커밋 메시지가 컨벤션을 벗어나면 커밋이 거부됩니다.
+
+수동 설정:
+
+```bash
+git config core.hooksPath .githooks
+```
+
 ## 이슈
 
 작업을 시작하기 전에 반드시 이슈를 만듭니다. 이슈 번호가 브랜치와 커밋을 추적하는 기준이 됩니다.
@@ -30,8 +49,8 @@ SubFlow 팀의 협업 규칙입니다. 모든 팀원이 같은 방식으로 일�
 | 기능 제안 | 새로운 기능이나 개선 사항 |
 | 리팩터링 / 개선 | 동작 변경 없이 구조를 개선 |
 
-- 제목은 `[BUG]`, `[FEAT]`, `[REFACTOR]`로 시작합니다.
-- 담당자(Assignee)와 라벨을 지정합니다.
+- 제목은 `[BUG]`, `[FEAT]`, `[REFACTOR]`로 시작합니다. (템플릿이 자동 적용)
+- 담당자(Assignee)와 라벨을 지정합니다. (템플릿이 라벨도 자동 적용)
 - 기능 제안은 **완료 조건(Acceptance Criteria)** 을 반드시 작성합니다.
 
 ## 브랜치 전략
@@ -82,6 +101,9 @@ git branch -d feat/#12-subscription-list
 
 [Conventional Commits](https://www.conventionalcommits.org/ko/v1.0.0/) 형식을 사용합니다.
 
+> **자동 검사:** `./gradlew installHooks`를 실행했다면, 컨벤션을 어긴 커밋은 로컬에서 거부됩니다.
+> 훅을 설치하지 않았더라도 PR 제목 검사(`PR Title Convention`)가 CI에서 동작하므로, 어차피 통과하지 못합니다.
+
 ```text
 <type>: <변경 내용>
 
@@ -101,6 +123,10 @@ git branch -d feat/#12-subscription-list
 | `test` | 테스트 추가/수정 |
 | `chore` | 빌드, 설정, 의존성 |
 | `style` | 포맷팅, 세미콜론 등 동작에 영향 없는 변경 |
+| `perf` | 성능 개선 |
+| `build` | 빌드 시스템 변경 |
+| `ci` | CI 설정 변경 |
+| `revert` | 이전 커밋 되돌리기 |
 
 ### 예시
 
@@ -147,7 +173,7 @@ gh pr create --base main --title "feat: 구독 목록 조회 API 추가"
 
 ### 규칙
 
-- 제목은 커밋 컨벤션과 동일하게 작성합니다.
+- 제목은 커밋 컨벤션과 동일하게 작성합니다. **CI(`PR Title Convention`)가 자동 검사합니다.**
 - `Closes #이슈번호`를 반드시 적습니다. 머지 시 이슈가 자동으로 닫힙니다.
 - **Draft PR**을 활용해 일찍 피드백을 받아도 됩니다. 단, 머지 전에 Ready로 전환합니다.
 - 리뷰어는 팀원 중 최소 1명을 지정합니다. **본인 PR은 본인이 승인할 수 없습니다.**
