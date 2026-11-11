@@ -1,13 +1,14 @@
 package com.subflow.subscription.controller;
 
 import com.subflow.global.exception.GlobalExceptionHandler;
-import com.subflow.subscription.calculator.BillingDateCalculator;
-import com.subflow.subscription.calculator.ExpenseCalculator;
 import com.subflow.subscription.domain.BillingCycle;
 import com.subflow.subscription.domain.Category;
 import com.subflow.subscription.domain.SubscriptionStatus;
+import com.subflow.subscription.dto.PreviewResponse;
 import com.subflow.subscription.dto.SubscriptionCreateRequest;
 import com.subflow.subscription.dto.SubscriptionResponse;
+import com.subflow.subscription.service.SubscriptionCalendarService;
+import com.subflow.subscription.service.SubscriptionPreviewService;
 import com.subflow.subscription.service.SubscriptionService;
 import com.subflow.subscription.service.SubscriptionStatisticsService;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,10 +44,10 @@ class SubscriptionApiControllerTest {
     private SubscriptionStatisticsService statisticsService;
 
     @Mock
-    private BillingDateCalculator billingDateCalculator;
+    private SubscriptionCalendarService calendarService;
 
     @Mock
-    private ExpenseCalculator expenseCalculator;
+    private SubscriptionPreviewService previewService;
 
     @InjectMocks
     private SubscriptionApiController subscriptionApiController;
@@ -107,9 +108,12 @@ class SubscriptionApiControllerTest {
         LocalDate today = LocalDate.now();
         LocalDate calculatedDate = today.plusDays(10);
 
-        given(billingDateCalculator.calculateNextBillingDate(any(), any(), any(), any())).willReturn(calculatedDate);
-        given(expenseCalculator.calculateMonthlyExpense(any(), any())).willReturn(BigDecimal.valueOf(10000));
-        given(expenseCalculator.calculateDaysUntilNextBilling(any(), any())).willReturn(10L);
+        given(previewService.calculatePreview(any(), any(), any(), any()))
+                .willReturn(PreviewResponse.builder()
+                        .nextBillingDate(calculatedDate)
+                        .monthlyExpense(BigDecimal.valueOf(10000))
+                        .dDay(10L)
+                        .build());
 
         mockMvc.perform(get("/api/subscriptions/calculate-preview")
                         .param("fee", "120000")
