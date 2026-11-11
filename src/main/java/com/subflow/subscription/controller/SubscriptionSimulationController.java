@@ -46,14 +46,14 @@ public class SubscriptionSimulationController {
 
     @GetMapping("/records")
     public ResponseEntity<List<BillingRecordResponse>> getBillingRecords() {
-        return ResponseEntity.ok(billingRecordRepository.findTop20ByOrderByBillingDateDesc().stream()
+        return ResponseEntity.ok(billingRecordRepository.findRecentWithSubscription().stream()
                 .map(BillingRecordResponse::from)
                 .toList());
     }
 
     @GetMapping("/notifications")
     public ResponseEntity<List<NotificationResponse>> getNotifications() {
-        return ResponseEntity.ok(notificationHistoryRepository.findTop20ByOrderBySentAtDesc().stream()
+        return ResponseEntity.ok(notificationHistoryRepository.findRecentWithSubscription().stream()
                 .map(NotificationResponse::from)
                 .toList());
     }
