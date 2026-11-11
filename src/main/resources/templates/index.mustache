@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SubFlow - 스마트 구독 통합 관리</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        body { background-color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        .card-stat { border: none; border-radius: 14px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); transition: transform .15s ease; }
+        .card-stat:hover { transform: translateY(-2px); }
+        .badge-cycle { font-size: 0.75rem; padding: 0.35em 0.65em; }
+        .dday-badge { font-weight: 600; font-size: 0.85rem; }
+        .preview-box { border-left: 4px solid #0d6efd; background-color: #f0f7ff; border-radius: 6px; }
+        .table > :not(caption) > * > * { vertical-align: middle; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-4 py-3 shadow-sm">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold fs-4" href="/"><i class="bi bi-wallet2 text-primary me-2"></i>SubFlow</a>
+        <span class="navbar-text text-light-50 small">스마트 구독 주기 & 월별 지출 통합 관리</span>
+        <button class="btn btn-primary btn-sm ms-auto" data-bs-toggle="modal" data-bs-target="#createModal">
+            <i class="bi bi-plus-lg me-1"></i>새 구독 등록
+        </button>
+    </div>
+</nav>
+
+<div class="container py-4">
+
+    <!-- 상단 대시보드 통계 카드 -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card card-stat bg-white p-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-secondary small fw-semibold">이번 달 예상 구독료</span>
+                    <span class="badge bg-primary-subtle text-primary"><i class="bi bi-calendar-check"></i></span>
+                </div>
+                <div class="fs-3 fw-bold text-dark" id="statMonthlyExpense">{{#summary}}{{totalMonthlyExpense}}{{/summary}}{{^summary}}0{{/summary}} <small class="fs-6 fw-normal text-muted">원</small></div>
+                <div class="text-muted small mt-1">연간 환산: 약 {{#summary}}{{totalYearlyExpense}}{{/summary}}{{^summary}}0{{/summary}}원</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-stat bg-white p-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-secondary small fw-semibold">이용 중인 구독</span>
+                    <span class="badge bg-success-subtle text-success"><i class="bi bi-check-circle"></i></span>
+                </div>
+                <div class="fs-3 fw-bold text-success">{{#summary}}{{activeCount}}{{/summary}}{{^summary}}0{{/summary}} <small class="fs-6 fw-normal text-muted">개</small></div>
+                <div class="text-muted small mt-1">정상 활성 상태</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-stat bg-white p-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-secondary small fw-semibold">7일 내 결제 예정</span>
+                    <span class="badge bg-warning-subtle text-warning"><i class="bi bi-alarm"></i></span>
+                </div>
+                <div class="fs-3 fw-bold text-warning">{{#summary}}{{upcomingCountWithin7Days}}{{/summary}}{{^summary}}0{{/summary}} <small class="fs-6 fw-normal text-muted">건</small></div>
+                <div class="text-muted small mt-1">결제일 도래 예정</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-stat bg-white p-3">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <span class="text-secondary small fw-semibold">시연용 배치 시뮬레이터</span>
+                    <span class="badge bg-info-subtle text-info"><i class="bi bi-cpu"></i></span>
+                </div>
+                <div class="btn-group btn-group-sm w-100 mt-2" role="group">
+                    <button type="button" class="btn btn-outline-primary" onclick="triggerBatch('run-billing-batch')" title="오늘자 결제 완료 & 다음 결제일 갱신">결제갱신</button>
+                    <button type="button" class="btn btn-outline-warning" onclick="triggerBatch('run-notification-batch')" title="D-3 결제 예정 알림 생성">알림발송</button>
+                    <button type="button" class="btn btn-outline-danger" onclick="triggerBatch('run-expiration-batch')" title="해지 예정건 자동 해지">만료처리</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 컨텐츠 영역 -->
+    <div class="row g-4">
+        <!-- 구독 목록 테이블 -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-list-stars text-primary me-2"></i>내 구독 서비스 목록</h5>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="location.reload()"><i class="bi bi-arrow-clockwise"></i> 새로고침</button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light small text-secondary">
+                            <tr>
+                                <th>서비스명</th>
+                                <th>카테고리</th>
+                                <th>결제 주기</th>
+                                <th>결제 금액</th>
+                                <th class="text-primary">월 예상 지출</th>
+                                <th>다음 결제일</th>
+                                <th>상태</th>
+                                <th class="text-end">관리</th>
+                            </tr>
+                        </thead>
+                        <tbody id="subscriptionTableBody">
+                            {{#subscriptions}}
+                            <tr>
+                                <td>
+                                    <div class="fw-bold text-dark">{{serviceName}}</div>
+                                    <small class="text-muted">{{#memo}}{{memo}}{{/memo}}</small>
+                                </td>
+                                <td><span class="badge bg-secondary-subtle text-dark">{{categoryDescription}}</span></td>
+                                <td><span class="badge bg-light text-dark border badge-cycle">{{billingCycleDescription}}</span></td>
+                                <td class="fw-semibold">{{fee}}원</td>
+                                <td class="fw-bold text-primary">{{monthlyExpense}}원</td>
+                                <td>
+                                    <div>{{nextBillingDate}}</div>
+                                    <span class="badge dday-badge bg-info-subtle text-info">D-{{dDay}}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success-subtle text-success">{{statusDescription}}</span>
+                                </td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-warning" onclick="cancelModal({{id}}, '{{serviceName}}')">해지</button>
+                                        <button class="btn btn-outline-danger" onclick="deleteSubscription({{id}})">삭제</button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {{/subscriptions}}
+                            {{^subscriptions}}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-5">
+                                    <i class="bi bi-inbox fs-1 d-block mb-2 text-secondary"></i>
+                                    등록된 구독 서비스가 없습니다.<br>우측 상단의 <strong>[새 구독 등록]</strong> 버튼을 눌러 추가해보세요!
+                                </td>
+                            </tr>
+                            {{/subscriptions}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 우측 사이드 패널 (카테고리별 비중 및 최근 알림) -->
+        <div class="col-lg-4">
+            <!-- 카테고리별 지출 비율 -->
+            <div class="card border-0 shadow-sm rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-0">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-pie-chart text-primary me-2"></i>카테고리별 월 지출</h6>
+                </div>
+                <div class="card-body pt-0">
+                    {{#summary.categoryExpenses}}
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span>{{categoryDescription}} ({{count}}건)</span>
+                            <span class="fw-bold">{{amount}}원 ({{percentage}}%)</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div class="progress-bar bg-primary" role="progressbar" style="width: {{percentage}}%"></div>
+                        </div>
+                    </div>
+                    {{/summary.categoryExpenses}}
+                    {{^summary.categoryExpenses}}
+                    <div class="text-muted small text-center py-3">집계된 카테고리 데이터가 없습니다.</div>
+                    {{/summary.categoryExpenses}}
+                </div>
+            </div>
+
+            <!-- 최근 알림 및 결제 내역 탭 -->
+            <div class="card border-0 shadow-sm rounded-3">
+                <div class="card-header bg-white py-3 border-0">
+                    <h6 class="fw-bold mb-0"><i class="bi bi-bell text-warning me-2"></i>최근 알림 & 결제 로그</h6>
+                </div>
+                <div class="card-body pt-0" style="max-height: 320px; overflow-y: auto;" id="logsContainer">
+                    <div class="small text-muted text-center py-3">배치 실행 버튼을 누르면 실시간 로그가 표시됩니다.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 새 구독 등록 모달 (시연 핵심: 실시간 자동 계산) -->
+<div class="modal fade" id="createModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header">
+                <h5 class="modal-title fw-bold"><i class="bi bi-plus-circle text-primary me-2"></i>새 구독 등록</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createForm">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">서비스명 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="serviceName" placeholder="예: 넷플릭스 프리미엄" required>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">카테고리</label>
+                            <select class="form-select" id="category">
+                                <option value="OTT">OTT/영상</option>
+                                <option value="MUSIC">음악</option>
+                                <option value="PRODUCTIVITY">생산성/업무</option>
+                                <option value="SHOPPING">쇼핑/멤버십</option>
+                                <option value="CLOUD">클라우드/스토리지</option>
+                                <option value="GAME">게임</option>
+                                <option value="OTHER">기타</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">결제 주기 <span class="text-danger">*</span></label>
+                            <select class="form-select" id="billingCycle" onchange="updatePreview()">
+                                <option value="MONTHLY">매월 결제</option>
+                                <option value="YEARLY">매년 결제</option>
+                                <option value="WEEKLY">매주 결제</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">결제 금액 (원) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="fee" placeholder="17000" min="0" oninput="updatePreview()" required>
+                        </div>
+                        <div class="col-6" id="billingDayContainer">
+                            <label class="form-label small fw-semibold">매월 결제일 (1~31일)</label>
+                            <input type="number" class="form-control" id="billingDay" placeholder="25" min="1" max="31" oninput="updatePreview()">
+                        </div>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">구독 시작일</label>
+                            <input type="date" class="form-control" id="startDate" onchange="updatePreview()">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">결제 예정 알림</label>
+                            <select class="form-select" id="remindDaysBefore">
+                                <option value="1">1일 전</option>
+                                <option value="3" selected>3일 전</option>
+                                <option value="7">7일 전</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">메모</label>
+                        <input type="text" class="form-control" id="memo" placeholder="예: 친구 3명과 파티 계정">
+                    </div>
+
+                    <!-- 실시간 자동 계산 프리뷰 카드 (시연 포인트 핵심!) -->
+                    <div class="preview-box p-3 mb-2" id="previewBox">
+                        <div class="d-flex align-items-center mb-1">
+                            <i class="bi bi-magic text-primary me-2"></i>
+                            <span class="fw-bold small text-primary">실시간 자동 계산 프리뷰</span>
+                        </div>
+                        <div class="row g-2 mt-1">
+                            <div class="col-6">
+                                <small class="text-secondary d-block">다음 결제일</small>
+                                <span class="fw-bold text-dark fs-6" id="previewNextBilling">-</span>
+                                <span class="badge bg-primary-subtle text-primary ms-1" id="previewDDay"></span>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-secondary d-block">월 환산 예상 지출</small>
+                                <span class="fw-bold text-primary fs-6" id="previewMonthlyExpense">-</span> 원
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" onclick="submitSubscription()"><i class="bi bi-check-lg me-1"></i>구독 등록</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // 기본 오늘 날짜 세팅
+    document.getElementById('startDate').value = new Date().toISOString().split('T')[0];
+
+    // 실시간 프리뷰 자동 계산 (시연 포인트)
+    async function updatePreview() {
+        const fee = document.getElementById('fee').value;
+        const cycle = document.getElementById('billingCycle').value;
+        const billingDay = document.getElementById('billingDay').value;
+        const startDate = document.getElementById('startDate').value;
+
+        // 월별이 아니면 결제일 입력란 비활성화
+        const dayContainer = document.getElementById('billingDayContainer');
+        if (cycle !== 'MONTHLY') {
+            dayContainer.style.opacity = '0.5';
+        } else {
+            dayContainer.style.opacity = '1.0';
+        }
+
+        if (!fee || fee <= 0) {
+            document.getElementById('previewNextBilling').innerText = '-';
+            document.getElementById('previewMonthlyExpense').innerText = '-';
+            document.getElementById('previewDDay').innerText = '';
+            return;
+        }
+
+        let url = `/api/subscriptions/calculate-preview?fee=${fee}&billingCycle=${cycle}`;
+        if (billingDay) url += `&billingDay=${billingDay}`;
+        if (startDate) url += `&startDate=${startDate}`;
+
+        try {
+            const res = await fetch(url);
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('previewNextBilling').innerText = data.nextBillingDate;
+                document.getElementById('previewMonthlyExpense').innerText = Number(data.monthlyExpense).toLocaleString();
+                document.getElementById('previewDDay').innerText = `D-${data.dDay}`;
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    // 구독 등록 처리
+    async function submitSubscription() {
+        const serviceName = document.getElementById('serviceName').value.trim();
+        const category = document.getElementById('category').value;
+        const fee = document.getElementById('fee').value;
+        const billingCycle = document.getElementById('billingCycle').value;
+        const billingDay = document.getElementById('billingDay').value;
+        const startDate = document.getElementById('startDate').value;
+        const remindDaysBefore = document.getElementById('remindDaysBefore').value;
+        const memo = document.getElementById('memo').value.trim();
+
+        if (!serviceName || !fee) {
+            alert('서비스명과 금액을 입력해 주세요.');
+            return;
+        }
+
+        const payload = {
+            serviceName,
+            category,
+            fee: parseFloat(fee),
+            billingCycle,
+            billingDay: billingDay ? parseInt(billingDay) : null,
+            startDate: startDate || null,
+            remindDaysBefore: parseInt(remindDaysBefore),
+            memo
+        };
+
+        const res = await fetch('/api/subscriptions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            alert('구독이 성공적으로 등록되었습니다!');
+            location.reload();
+        } else {
+            const err = await res.json();
+            alert('등록 실패: ' + (err.message || '입력값을 확인해 주세요.'));
+        }
+    }
+
+    // 삭제 처리
+    async function deleteSubscription(id) {
+        if (!confirm('정말 이 구독을 삭제하시겠습니까?')) return;
+        const res = await fetch(`/api/subscriptions/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            location.reload();
+        } else {
+            alert('삭제 실패');
+        }
+    }
+
+    // 해지 처리
+    async function cancelModal(id, serviceName) {
+        const option = prompt(`'${serviceName}' 해지 방식을 입력하세요:\n1: 즉시 해지\n2: 해지 예약(날짜 YYYY-MM-DD 입력)`, '1');
+        if (!option) return;
+
+        let payload = {};
+        if (option !== '1') {
+            payload.scheduledDate = option;
+        }
+
+        const res = await fetch(`/api/subscriptions/${id}/cancel`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            alert('해지 처리되었습니다.');
+            location.reload();
+        } else {
+            const err = await res.json();
+            alert('오류: ' + (err.message || '해지 처리 중 오류 발생'));
+        }
+    }
+
+    // 배치 시뮬레이션 트리거
+    async function triggerBatch(type) {
+        const res = await fetch(`/api/simulation/${type}`, { method: 'POST' });
+        const data = await res.json();
+        alert(`[배치 실행 완료]\n${data.message}`);
+        loadLogs();
+        location.reload();
+    }
+
+    // 최근 로그 로드
+    async function loadLogs() {
+        try {
+            const [notifRes, recordRes] = await Promise.all([
+                fetch('/api/simulation/notifications'),
+                fetch('/api/simulation/records')
+            ]);
+            const notifs = await notifRes.json();
+            const records = await recordRes.json();
+
+            const container = document.getElementById('logsContainer');
+            if (notifs.length === 0 && records.length === 0) return;
+
+            let html = '';
+            notifs.slice(0, 5).forEach(n => {
+                html += `<div class="p-2 mb-2 bg-light border-start border-warning border-3 rounded">
+                    <div class="fw-bold small text-dark">[알림] ${n.title}</div>
+                    <div class="small text-secondary">${n.message}</div>
+                </div>`;
+            });
+            records.slice(0, 5).forEach(r => {
+                html += `<div class="p-2 mb-2 bg-light border-start border-success border-3 rounded">
+                    <div class="fw-bold small text-dark">[결제 완료] ${r.serviceName} - ${Number(r.amount).toLocaleString()}원</div>
+                    <div class="small text-secondary">결제일: ${r.billingDate} (${r.statusDescription})</div>
+                </div>`;
+            });
+            container.innerHTML = html;
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    // 초기 로그 로드
+    loadLogs();
+</script>
+</body>
+</html>
