@@ -9,6 +9,7 @@ import com.subflow.subscription.domain.SubscriptionStatus;
 import com.subflow.subscription.dto.SubscriptionCancelRequest;
 import com.subflow.subscription.dto.SubscriptionCreateRequest;
 import com.subflow.subscription.dto.SubscriptionResponse;
+import com.subflow.subscription.dto.SubscriptionUpdateRequest;
 import com.subflow.subscription.repository.SubscriptionRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -25,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -95,8 +97,7 @@ class SubscriptionServiceTest {
 
     @Test
     @DisplayName("해지 예약 요청 시 해지 예정일과 EXPIRING 상태로 변경된다")
-    void scheduleCancellationSetsExpiringStatus() {
-        // given
+    void scheduleCancellationSetsExpiringStatus() {        // given
         Subscription subscription = Subscription.builder()
                 .serviceName("유튜브 프리미엄")
                 .category(Category.OTT)
@@ -120,5 +121,45 @@ class SubscriptionServiceTest {
         // then
         assertThat(response.getStatus()).isEqualTo(SubscriptionStatus.EXPIRING);
         assertThat(response.getCancellationScheduledAt()).isEqualTo(futureCancelDate);
+    }
+
+    @Test
+    @DisplayName("결제 주기와 결제일이 그대로면 수정해도 다음 결제일은 유지된다")
+    void updateKeepsNextBillingDateWhenScheduleUnchanged() {
+        // given
+        LocalDate alreadyAdvanced = LocalDate.now().plusMonths(1);
+        Subscription subscription = Subscription.builder()
+                .serviceName("넷플릭스")
+                .category(Category.OTT)
+                .fee(BigDecimal.valueOf(17000))
+                .billingCycle(BillingCycle.MONTHLY)
+                .billingDay(25)
+                .startDate(LocalDate.now().minusMonths(3))
+                .nextBillingDate(alreadyAdvanced)
+                .monthlyExpense(BigDecimal.valueOf(17000))
+                .remindDaysBefore(3)
+                .build();
+
+        given(subscriptionRepository.findById(1L)).willReturn(Optional.of(subscription));
+        given(expenseCalculator.calculateMonthlyExpense(eq(BigDecimal.valueOf(17000)), eq(BillingCycle.MONTHLY)))
+                .willReturn(BigDecimal.valueOf(17000));
+
+        SubscriptionUpdateRequest request = SubscriptionUpdateRequest.builder()
+                .serviceName("넷플릭스")
+                .category(Category.OTT)
+                .fee(BigDecimal.valueOf(17000))
+                .billingCycle(BillingCycle.MONTHLY)
+                .billingDay(25)
+                .remindDaysBefore(3)
+                .memo("메모만 변경")
+                .build();
+
+        // when
+        SubscriptionResponse response = subscriptionService.updateSubscription(1L, request);
+
+        // then
+        assertThat(response.getNextBillingDate()).isEqualTo(alreadyAdvanced);
+        verify(billingDateCalculator, never())
+                .calculateNextBillingDate(any(), any(), any(), any());
     }
 }

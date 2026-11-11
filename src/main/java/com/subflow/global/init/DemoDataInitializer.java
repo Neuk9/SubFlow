@@ -8,6 +8,7 @@ import com.subflow.subscription.service.SubscriptionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -15,6 +16,7 @@ import java.time.LocalDate;
 
 @Slf4j
 @Component
+@Profile("local")
 @RequiredArgsConstructor
 public class DemoDataInitializer implements CommandLineRunner {
 

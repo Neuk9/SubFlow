@@ -99,12 +99,23 @@ public class SubscriptionService {
             billingDay = subscription.getStartDate().getDayOfMonth();
         }
 
-        LocalDate nextBillingDate = billingDateCalculator.calculateNextBillingDate(
-                request.getBillingCycle(),
-                subscription.getStartDate(),
-                billingDay,
-                today
-        );
+        // 결제 주기나 결제일이 실제로 바뀐 경우에만 다음 결제일을 다시 계산한다.
+        // 그렇지 않으면 메모만 수정해도 이미 결제한 달로 되돌아간다.
+        boolean scheduleChanged = request.getBillingCycle() != subscription.getBillingCycle()
+                || !java.util.Objects.equals(billingDay, subscription.getBillingDay());
+
+        LocalDate nextBillingDate = subscription.getNextBillingDate();
+        if (scheduleChanged) {
+            LocalDate recalculated = billingDateCalculator.calculateNextBillingDate(
+                    request.getBillingCycle(),
+                    subscription.getStartDate(),
+                    billingDay,
+                    today
+            );
+            if (!recalculated.isBefore(subscription.getNextBillingDate())) {
+                nextBillingDate = recalculated;
+            }
+        }
 
         BigDecimal monthlyExpense = expenseCalculator.calculateMonthlyExpense(
                 request.getFee(),

@@ -33,6 +33,7 @@ public class SubscriptionScheduler {
     /**
      * [배치 1] 결제일 갱신 및 결제 이력 생성 (매일 00:00)
      * 결제일이 도래한(오늘 또는 이전) 활성 구독을 대상으로 결제 이력을 기록하고 다음 결제 주기로 갱신합니다.
+     * 서버가 멈춰 있던 기간의 결제도 누락되지 않도록 도래한 주기를 모두 따라잡습니다.
      */
     @Scheduled(cron = "0 0 0 * * *")
     @Transactional
@@ -43,28 +44,43 @@ public class SubscriptionScheduler {
 
         log.info("[배치] 오늘 결제 대상 구독 처리 시작 (총 {}건)", dueSubscriptions.size());
 
+        int recorded = 0;
         for (Subscription sub : dueSubscriptions) {
-            BillingRecord record = BillingRecord.builder()
-                    .subscription(sub)
-                    .billingDate(sub.getNextBillingDate())
-                    .amount(sub.getFee())
-                    .status(BillingStatus.PAID)
-                    .memo("정기 자동 결제")
-                    .build();
-            billingRecordRepository.save(record);
+            // 한 구독에서 실패해도 나머지 구독 처리는 계속한다.
+            try {
+                while (!sub.getNextBillingDate().isAfter(today)) {
+                    BillingRecord record = BillingRecord.builder()
+                            .subscription(sub)
+                            .billingDate(sub.getNextBillingDate())
+                            .amount(sub.getFee())
+                            .status(BillingStatus.PAID)
+                            .memo("정기 자동 결제")
+                            .build();
+                    billingRecordRepository.save(record);
+                    recorded++;
 
-            LocalDate nextCycleDate = billingDateCalculator.calculateNextCycleDate(
-                    sub.getBillingCycle(),
-                    sub.getNextBillingDate(),
-                    sub.getBillingDay()
-            );
+                    LocalDate nextCycleDate = billingDateCalculator.calculateNextCycleDate(
+                            sub.getBillingCycle(),
+                            sub.getNextBillingDate(),
+                            sub.getBillingDay()
+                    );
 
-            sub.renewBilling(nextCycleDate);
-            log.info("구독 결제 완료 및 다음 결제일 갱신: {} -> 다음 결제일: {}",
-                    sub.getServiceName(), nextCycleDate);
+                    if (!nextCycleDate.isAfter(sub.getNextBillingDate())) {
+                        log.warn("다음 결제일이 이전과 같거나 이릅니다. 무한 루프 방지를 위해 중단합니다. - 구독 ID: {}, 결제일: {}",
+                                sub.getId(), sub.getNextBillingDate());
+                        break;
+                    }
+
+                    sub.renewBilling(nextCycleDate);
+                    log.info("구독 결제 완료 및 다음 결제일 갱신: {} -> 다음 결제일: {}",
+                            sub.getServiceName(), nextCycleDate);
+                }
+            } catch (RuntimeException e) {
+                log.error("구독 결제 처리 실패 - 구독 ID: {}", sub.getId(), e);
+            }
         }
 
-        return dueSubscriptions.size();
+        return recorded;
     }
 
     /**
@@ -120,19 +136,25 @@ public class SubscriptionScheduler {
 
         log.info("[배치] 해지 예정 만료 처리 (총 {}건)", expiringSubscriptions.size());
 
+        int count = 0;
         for (Subscription sub : expiringSubscriptions) {
-            sub.cancelImmediately();
+            try {
+                sub.cancelImmediately();
 
-            NotificationHistory history = NotificationHistory.builder()
-                    .subscription(sub)
-                    .type(NotificationType.EXPIRATION_WARNING)
-                    .title(String.format("[%s] 구독 해지 처리 완료", sub.getServiceName()))
-                    .message(String.format("'%s' 구독이 요청하신 해지 예정일에 도달하여 해지 완료되었습니다.", sub.getServiceName()))
-                    .sentAt(LocalDateTime.now())
-                    .build();
-            notificationHistoryRepository.save(history);
+                NotificationHistory history = NotificationHistory.builder()
+                        .subscription(sub)
+                        .type(NotificationType.EXPIRATION_WARNING)
+                        .title(String.format("[%s] 구독 해지 처리 완료", sub.getServiceName()))
+                        .message(String.format("'%s' 구독이 요청하신 해지 예정일에 도달하여 해지 완료되었습니다.", sub.getServiceName()))
+                        .sentAt(LocalDateTime.now())
+                        .build();
+                notificationHistoryRepository.save(history);
+                count++;
+            } catch (RuntimeException e) {
+                log.error("해지 예정 처리 실패 - 구독 ID: {}", sub.getId(), e);
+            }
         }
 
-        return expiringSubscriptions.size();
+        return count;
     }
 }

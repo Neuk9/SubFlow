@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -128,5 +129,34 @@ class SubscriptionSchedulerTest {
         assertThat(expired).isEqualTo(1);
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.CANCELED);
         verify(notificationHistoryRepository).save(any(NotificationHistory.class));
+    }
+
+    @Test
+    @DisplayName("서버가 멈춘 동안 밀린 결제 주기를 모두 따라잡는다")
+    void processDueSubscriptionsCatchesUpMissedCycles() {
+        LocalDate today = LocalDate.now();
+
+        Subscription subscription = Subscription.builder()
+                .serviceName("넷플릭스")
+                .category(Category.OTT)
+                .fee(BigDecimal.valueOf(17000))
+                .billingCycle(BillingCycle.MONTHLY)
+                .billingDay(today.minusMonths(2).getDayOfMonth())
+                .startDate(today.minusMonths(3))
+                .nextBillingDate(today.minusMonths(2))
+                .monthlyExpense(BigDecimal.valueOf(17000))
+                .remindDaysBefore(3)
+                .build();
+
+        given(subscriptionRepository.findAllByStatusAndNextBillingDateLessThanEqual(eq(SubscriptionStatus.ACTIVE), any(LocalDate.class)))
+                .willReturn(List.of(subscription));
+        given(billingDateCalculator.calculateNextCycleDate(eq(BillingCycle.MONTHLY), any(LocalDate.class), any()))
+                .willAnswer(invocation -> ((LocalDate) invocation.getArgument(1)).plusMonths(1));
+
+        int processed = subscriptionScheduler.processDueSubscriptions();
+
+        assertThat(processed).isGreaterThanOrEqualTo(2);
+        assertThat(subscription.getNextBillingDate()).isAfter(today);
+        verify(billingRecordRepository, times(processed)).save(any(BillingRecord.class));
     }
 }

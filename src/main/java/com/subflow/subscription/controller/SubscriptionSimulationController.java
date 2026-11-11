@@ -6,6 +6,7 @@ import com.subflow.subscription.repository.BillingRecordRepository;
 import com.subflow.subscription.repository.NotificationHistoryRepository;
 import com.subflow.subscription.scheduler.SubscriptionScheduler;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,6 +18,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/simulation")
+@Profile("local")
 @RequiredArgsConstructor
 public class SubscriptionSimulationController {
 

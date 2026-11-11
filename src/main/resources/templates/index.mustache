@@ -177,8 +177,8 @@
                                         </td>
                                         <td class="text-end">
                                             <div class="btn-group btn-group-sm">
-                                                <button class="btn btn-outline-warning" onclick="cancelModal({{id}}, '{{serviceName}}')">해지</button>
-                                                <button class="btn btn-outline-danger" onclick="deleteSubscription({{id}})">삭제</button>
+                                                <button class="btn btn-outline-warning" data-id="{{id}}" data-name="{{serviceName}}" onclick="cancelModal(this)">해지</button>
+                                                <button class="btn btn-outline-danger" data-id="{{id}}" onclick="deleteSubscription(this)">삭제</button>
                                             </div>
                                         </td>
                                     </tr>
@@ -494,7 +494,8 @@
     }
 
     // 삭제 처리
-    async function deleteSubscription(id) {
+    async function deleteSubscription(button) {
+        const id = button.dataset.id;
         if (!confirm('정말 이 구독을 삭제하시겠습니까?')) return;
         const res = await fetch(`/api/subscriptions/${id}`, { method: 'DELETE' });
         if (res.ok) {
@@ -504,7 +505,9 @@
     }
 
     // 해지 처리
-    async function cancelModal(id, serviceName) {
+    async function cancelModal(button) {
+        const id = button.dataset.id;
+        const serviceName = button.dataset.name;
         const option = prompt(`'${serviceName}' 해지 방식을 입력하세요:\n1: 즉시 해지\n2: 해지 예약(날짜 YYYY-MM-DD 입력)`, '1');
         if (!option) return;
 
@@ -543,6 +546,16 @@
         setTimeout(() => location.reload(), 1200);
     }
 
+    // HTML escape (innerHTML에 사용자 입력을 넣기 전에 사용)
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
     // 최근 로그 로드
     async function loadLogs() {
         try {
@@ -559,14 +572,14 @@
             let html = '';
             notifs.slice(0, 5).forEach(n => {
                 html += `<div class="p-2 mb-2 bg-light border-start border-warning border-3 rounded">
-                    <div class="fw-bold small text-dark">[알림] ${n.title}</div>
-                    <div class="small text-secondary">${n.message}</div>
+                    <div class="fw-bold small text-dark">[알림] ${escapeHtml(n.title)}</div>
+                    <div class="small text-secondary">${escapeHtml(n.message)}</div>
                 </div>`;
             });
             records.slice(0, 5).forEach(r => {
                 html += `<div class="p-2 mb-2 bg-light border-start border-success border-3 rounded">
-                    <div class="fw-bold small text-dark">[결제 완료] ${r.serviceName} - ${Number(r.amount).toLocaleString()}원</div>
-                    <div class="small text-secondary">결제일: ${r.billingDate} (${r.statusDescription})</div>
+                    <div class="fw-bold small text-dark">[결제 완료] ${escapeHtml(r.serviceName)} - ${Number(r.amount).toLocaleString()}원</div>
+                    <div class="small text-secondary">결제일: ${escapeHtml(r.billingDate)} (${escapeHtml(r.statusDescription)})</div>
                 </div>`;
             });
             container.innerHTML = html;
@@ -636,8 +649,8 @@
 
             if (eventsByDay[d]) {
                 eventsByDay[d].forEach(ev => {
-                    gridHtml += `<span class="cal-event-pill" style="background-color: ${ev.color};" title="${ev.serviceName}: ${Number(ev.fee).toLocaleString()}원">
-                        ${ev.serviceName} (${Number(ev.fee).toLocaleString()}원)
+                    gridHtml += `<span class="cal-event-pill" style="background-color: ${escapeHtml(ev.color)};" title="${escapeHtml(ev.serviceName)}: ${Number(ev.fee).toLocaleString()}원">
+                        ${escapeHtml(ev.serviceName)} (${Number(ev.fee).toLocaleString()}원)
                     </span>`;
                 });
             }
