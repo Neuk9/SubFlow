@@ -47,9 +47,14 @@ public class BillingDateCalculator {
 
         return switch (cycle) {
             case MONTHLY -> {
-                int day = (billingDay != null) ? billingDay : currentBillingDate.getDayOfMonth();
+                // billingDay가 없으면 이전 결제일의 일자를 기준으로 삼게 되어
+                // 1/31 -> 2/28 -> 3/28 처럼 말일이 영구히 밀린다.
+                if (billingDay == null) {
+                    throw new BusinessException(ErrorCode.INVALID_BILLING_DAY,
+                            "매월 결제 구독은 결제일이 필요합니다.");
+                }
                 YearMonth nextMonth = YearMonth.from(currentBillingDate).plusMonths(1);
-                int adjustedDay = Math.min(day, nextMonth.lengthOfMonth());
+                int adjustedDay = Math.min(billingDay, nextMonth.lengthOfMonth());
                 yield nextMonth.atDay(adjustedDay);
             }
             case YEARLY -> {
