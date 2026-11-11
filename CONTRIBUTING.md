@@ -185,7 +185,7 @@ gh pr create --base main --title "feat: 구독 목록 조회 API 추가"
 
 ### `main` 브랜치 보호 (Ruleset)
 
-아래 규칙은 GitHub에서 강제되며, **관리자도 우회할 수 없습니다.**
+아래 규칙은 GitHub에서 강제됩니다. 팀원은 반드시 PR과 승인을 거쳐야 합니다.
 
 | 규칙 | 내용 |
 | --- | --- |
@@ -201,6 +201,26 @@ gh pr create --base main --title "feat: 구독 목록 조회 API 추가"
 | force push 금지 | `main`에 non-fast-forward push를 할 수 없습니다. |
 
 > 본인 PR은 본인이 승인할 수 없습니다. 팀원의 승인을 받아야 합니다.
+
+### 관리자 바이패스
+
+저장소 관리자(admin)는 위 규칙을 우회할 수 있습니다. (`bypass_actors: admin`)
+
+**다음 경우에만 사용합니다.**
+
+- CI 장애 등으로 긴급 배포가 필요한 경우
+- 팀원이 부재중이고 변경이 사소한 경우 (오타, 문서)
+- 초기 세팅처럼 리뷰어가 없는 경우
+
+```bash
+# 관리자 권한으로 즉시 머지
+gh pr merge <번호> --squash --admin
+
+# 관리자 권한으로 직접 push
+git push origin main
+```
+
+> 바이패스로 머지한 경우 PR에 사유를 코멘트로 남깁니다.
 
 ### 승인 후 수정이 필요할 때
 
