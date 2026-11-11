@@ -38,3 +38,12 @@ dependencies {
 tasks.named('test') {
 	useJUnitPlatform()
 }
+
+// 협업 훅 설치: ./gradlew installHooks
+// 클론 후 한 번 실행하면 commit-msg 검사가 활성화됩니다.
+tasks.register('installHooks', Exec) {
+	group = 'setup'
+	description = 'Git 훅(.githooks)을 활성화합니다.'
+	commandLine 'git', 'config', 'core.hooksPath', '.githooks'
+}
+
