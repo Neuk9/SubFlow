@@ -176,6 +176,68 @@ public class SubscriptionService {
         return SubscriptionResponse.from(subscription, today);
     }
 
+    public List<com.subflow.subscription.dto.CalendarEventDto> getMonthlyCalendarEvents(int year, int month) {
+        java.time.YearMonth ym = java.time.YearMonth.of(year, month);
+        List<Subscription> activeSubscriptions = subscriptionRepository.findAll().stream()
+                .filter(s -> s.getStatus() == SubscriptionStatus.ACTIVE || s.getStatus() == SubscriptionStatus.EXPIRING)
+                .toList();
+
+        List<com.subflow.subscription.dto.CalendarEventDto> events = new java.util.ArrayList<>();
+
+        for (Subscription sub : activeSubscriptions) {
+            LocalDate startDate = sub.getStartDate();
+            LocalDate cancelDate = sub.getCancellationScheduledAt();
+
+            switch (sub.getBillingCycle()) {
+                case MONTHLY -> {
+                    int day = sub.getBillingDay() != null ? sub.getBillingDay() : startDate.getDayOfMonth();
+                    int validDay = Math.min(day, ym.lengthOfMonth());
+                    LocalDate billingDate = ym.atDay(validDay);
+                    if (!billingDate.isBefore(startDate) && (cancelDate == null || !billingDate.isAfter(cancelDate))) {
+                        events.add(buildCalendarEvent(sub, billingDate));
+                    }
+                }
+                case YEARLY -> {
+                    if (startDate.getMonthValue() == month) {
+                        int validDay = Math.min(startDate.getDayOfMonth(), ym.lengthOfMonth());
+                        LocalDate billingDate = ym.atDay(validDay);
+                        if (!billingDate.isBefore(startDate) && (cancelDate == null || !billingDate.isAfter(cancelDate))) {
+                            events.add(buildCalendarEvent(sub, billingDate));
+                        }
+                    }
+                }
+                case WEEKLY -> {
+                    for (int d = 1; d <= ym.lengthOfMonth(); d++) {
+                        LocalDate date = ym.atDay(d);
+                        if (!date.isBefore(startDate) && (cancelDate == null || !date.isAfter(cancelDate))) {
+                            long days = java.time.temporal.ChronoUnit.DAYS.between(startDate, date);
+                            if (days % 7 == 0) {
+                                events.add(buildCalendarEvent(sub, date));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        events.sort(java.util.Comparator.comparing(com.subflow.subscription.dto.CalendarEventDto::getBillingDate));
+        return events;
+    }
+
+    private com.subflow.subscription.dto.CalendarEventDto buildCalendarEvent(Subscription sub, LocalDate billingDate) {
+        return com.subflow.subscription.dto.CalendarEventDto.builder()
+                .subscriptionId(sub.getId())
+                .serviceName(sub.getServiceName())
+                .category(sub.getCategory())
+                .categoryDescription(sub.getCategory().getDescription())
+                .fee(sub.getFee())
+                .billingCycle(sub.getBillingCycle())
+                .billingDate(billingDate)
+                .day(billingDate.getDayOfMonth())
+                .color(com.subflow.subscription.dto.CalendarEventDto.getColorForCategory(sub.getCategory()))
+                .build();
+    }
+
     public Subscription findById(Long id) {
         return subscriptionRepository.findById(id)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SUBSCRIPTION_NOT_FOUND));

@@ -99,6 +99,16 @@ public class SubscriptionApiController {
         return ResponseEntity.ok(statisticsService.getUpcomingSubscriptions(daysAhead));
     }
 
+    @GetMapping("/calendar")
+    public ResponseEntity<List<com.subflow.subscription.dto.CalendarEventDto>> getCalendarEvents(
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) Integer month) {
+        LocalDate now = LocalDate.now();
+        int targetYear = (year != null) ? year : now.getYear();
+        int targetMonth = (month != null) ? month : now.getMonthValue();
+        return ResponseEntity.ok(subscriptionService.getMonthlyCalendarEvents(targetYear, targetMonth));
+    }
+
     /**
      * [시연 포인트용 프리뷰 API]
      * 구독 등록 폼에서 금액/주기/시작일 입력 시 실시간으로 계산되는 다음 결제일과 월 환산 지출을 반환합니다.
