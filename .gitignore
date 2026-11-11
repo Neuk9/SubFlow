@@ -45,5 +45,7 @@ bin/
 
 ### 로컬 설정 / 비밀값 ###
 .env
-application-local.yml
+# application-local.yml 은 팀 공용 기본 프로필이므로 커밋한다.
+# 개인 설정이 필요하면 application-local-secret.yml 을 사용한다.
+application-local-secret.yml
 application-secret.yml

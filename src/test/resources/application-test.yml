@@ -1,6 +1,8 @@
 spring:
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_TEST_NAME:subflow_test}
+    url: jdbc:h2:mem:subflow-test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
+    username: sa
+    password:
   jpa:
     hibernate:
       ddl-auto: create-drop
