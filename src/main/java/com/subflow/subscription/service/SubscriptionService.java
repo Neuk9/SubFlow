@@ -1,5 +1,6 @@
 package com.subflow.subscription.service;
 
+import com.subflow.global.auth.CurrentUserProvider;
 import com.subflow.global.exception.BusinessException;
 import com.subflow.global.exception.ErrorCode;
 import com.subflow.subscription.calculator.BillingDateCalculator;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -30,16 +32,14 @@ public class SubscriptionService {
     private final SubscriptionRepository subscriptionRepository;
     private final BillingDateCalculator billingDateCalculator;
     private final ExpenseCalculator expenseCalculator;
+    private final CurrentUserProvider currentUserProvider;
 
     @Transactional
     public SubscriptionResponse createSubscription(SubscriptionCreateRequest request) {
         LocalDate today = LocalDate.now();
         LocalDate startDate = request.getStartDate() != null ? request.getStartDate() : today;
 
-        Integer billingDay = request.getBillingDay();
-        if (request.getBillingCycle() == BillingCycle.MONTHLY && billingDay == null) {
-            billingDay = startDate.getDayOfMonth();
-        }
+        Integer billingDay = resolveBillingDay(request.getBillingCycle(), request.getBillingDay(), startDate);
 
         LocalDate nextBillingDate = billingDateCalculator.calculateNextBillingDate(
                 request.getBillingCycle(),
@@ -64,6 +64,7 @@ public class SubscriptionService {
                 .monthlyExpense(monthlyExpense)
                 .remindDaysBefore(request.getRemindDaysBefore())
                 .memo(request.getMemo())
+                .ownerEmail(currentUserProvider.getCurrentUserEmail())
                 .build();
 
         Subscription saved = subscriptionRepository.save(subscription);
@@ -75,9 +76,10 @@ public class SubscriptionService {
 
     public List<SubscriptionResponse> getSubscriptions(SubscriptionStatus status) {
         LocalDate today = LocalDate.now();
+        String ownerEmail = currentUserProvider.getCurrentUserEmail();
         List<Subscription> subscriptions = (status != null)
-                ? subscriptionRepository.findAllByStatusOrderByNextBillingDateAsc(status)
-                : subscriptionRepository.findAllByOrderByNextBillingDateAsc();
+                ? subscriptionRepository.findAllByOwnerEmailAndStatusOrderByNextBillingDateAsc(ownerEmail, status)
+                : subscriptionRepository.findAllByOwnerEmailOrderByNextBillingDateAsc(ownerEmail);
 
         return subscriptions.stream()
                 .map(s -> SubscriptionResponse.from(s, today))
@@ -85,24 +87,22 @@ public class SubscriptionService {
     }
 
     public SubscriptionResponse getSubscription(Long id) {
-        Subscription subscription = findById(id);
+        Subscription subscription = findOwnedById(id);
         return SubscriptionResponse.from(subscription, LocalDate.now());
     }
 
     @Transactional
     public SubscriptionResponse updateSubscription(Long id, SubscriptionUpdateRequest request) {
-        Subscription subscription = findById(id);
+        Subscription subscription = findOwnedById(id);
         LocalDate today = LocalDate.now();
 
-        Integer billingDay = request.getBillingDay();
-        if (request.getBillingCycle() == BillingCycle.MONTHLY && billingDay == null) {
-            billingDay = subscription.getStartDate().getDayOfMonth();
-        }
+        Integer billingDay = resolveBillingDay(
+                request.getBillingCycle(), request.getBillingDay(), subscription.getStartDate());
 
         // 결제 주기나 결제일이 실제로 바뀐 경우에만 다음 결제일을 다시 계산한다.
         // 그렇지 않으면 메모만 수정해도 이미 결제한 달로 되돌아간다.
         boolean scheduleChanged = request.getBillingCycle() != subscription.getBillingCycle()
-                || !java.util.Objects.equals(billingDay, subscription.getBillingDay());
+                || !Objects.equals(billingDay, subscription.getBillingDay());
 
         LocalDate nextBillingDate = subscription.getNextBillingDate();
         if (scheduleChanged) {
@@ -142,14 +142,14 @@ public class SubscriptionService {
 
     @Transactional
     public void deleteSubscription(Long id) {
-        Subscription subscription = findById(id);
+        Subscription subscription = findOwnedById(id);
         subscriptionRepository.delete(subscription);
         log.info("구독 삭제 완료 - ID: {}", id);
     }
 
     @Transactional
     public SubscriptionResponse cancelSubscription(Long id, SubscriptionCancelRequest request) {
-        Subscription subscription = findById(id);
+        Subscription subscription = findOwnedById(id);
         LocalDate today = LocalDate.now();
 
         if (request != null && request.getScheduledDate() != null) {
@@ -168,14 +168,14 @@ public class SubscriptionService {
 
     @Transactional
     public SubscriptionResponse pauseSubscription(Long id) {
-        Subscription subscription = findById(id);
+        Subscription subscription = findOwnedById(id);
         subscription.pause();
         return SubscriptionResponse.from(subscription, LocalDate.now());
     }
 
     @Transactional
     public SubscriptionResponse resumeSubscription(Long id) {
-        Subscription subscription = findById(id);
+        Subscription subscription = findOwnedById(id);
         LocalDate today = LocalDate.now();
         LocalDate nextBillingDate = billingDateCalculator.calculateNextBillingDate(
                 subscription.getBillingCycle(),
@@ -187,8 +187,16 @@ public class SubscriptionService {
         return SubscriptionResponse.from(subscription, today);
     }
 
-    public Subscription findById(Long id) {
-        return subscriptionRepository.findById(id)
+    private Integer resolveBillingDay(BillingCycle billingCycle, Integer billingDay, LocalDate startDate) {
+        if (billingCycle == BillingCycle.MONTHLY && billingDay == null) {
+            return startDate.getDayOfMonth();
+        }
+        return billingDay;
+    }
+
+    private Subscription findOwnedById(Long id) {
+        return subscriptionRepository
+                .findByIdAndOwnerEmail(id, currentUserProvider.getCurrentUserEmail())
                 .orElseThrow(() -> new BusinessException(ErrorCode.SUBSCRIPTION_NOT_FOUND));
     }
 }

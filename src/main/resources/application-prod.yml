@@ -10,6 +10,10 @@ spring:
     hibernate:
       ddl-auto: validate
 
+subflow:
+  auth:
+    enabled: true
+
 logging:
   level:
     org.hibernate.SQL: warn

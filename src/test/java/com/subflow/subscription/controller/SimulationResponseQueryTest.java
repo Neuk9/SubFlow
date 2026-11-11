@@ -13,7 +13,9 @@ import com.subflow.subscription.scheduler.SubscriptionScheduler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.subflow.global.config.AppConfig;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.context.annotation.Import;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -27,6 +29,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  * (open-in-view: false 환경에서 /api/simulation/* 응답이 500이 되던 문제)
  */
 @DataJpaTest
+@Import(AppConfig.class)
 class SimulationResponseQueryTest {
 
     @Autowired
@@ -92,6 +95,7 @@ class SimulationResponseQueryTest {
                 .startDate(LocalDate.now().minusMonths(1))
                 .nextBillingDate(LocalDate.now().plusMonths(1))
                 .monthlyExpense(BigDecimal.valueOf(1000))
+                .ownerEmail("test@subflow.dev")
                 .build();
         entityManager.persist(subscription);
         return subscription;

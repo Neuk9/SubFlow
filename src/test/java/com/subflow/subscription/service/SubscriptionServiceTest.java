@@ -1,5 +1,6 @@
 package com.subflow.subscription.service;
 
+import com.subflow.global.auth.CurrentUserProvider;
 import com.subflow.subscription.calculator.BillingDateCalculator;
 import com.subflow.subscription.calculator.ExpenseCalculator;
 import com.subflow.subscription.domain.BillingCycle;
@@ -41,6 +42,9 @@ class SubscriptionServiceTest {
     @Mock
     private ExpenseCalculator expenseCalculator;
 
+    @Mock
+    private CurrentUserProvider currentUserProvider;
+
     @InjectMocks
     private SubscriptionService subscriptionService;
 
@@ -68,6 +72,7 @@ class SubscriptionServiceTest {
                 .willReturn(calculatedNextBilling);
         given(expenseCalculator.calculateMonthlyExpense(eq(fee), eq(BillingCycle.MONTHLY)))
                 .willReturn(monthlyExpense);
+        given(currentUserProvider.getCurrentUserEmail()).willReturn("test@subflow.dev");
 
         Subscription saved = Subscription.builder()
                 .serviceName(request.getServiceName())
@@ -107,9 +112,12 @@ class SubscriptionServiceTest {
                 .startDate(LocalDate.of(2026, 1, 10))
                 .nextBillingDate(LocalDate.of(2026, 3, 10))
                 .monthlyExpense(BigDecimal.valueOf(14900))
+                .ownerEmail("test@subflow.dev")
                 .build();
 
-        given(subscriptionRepository.findById(1L)).willReturn(Optional.of(subscription));
+        given(currentUserProvider.getCurrentUserEmail()).willReturn("test@subflow.dev");
+        given(subscriptionRepository.findByIdAndOwnerEmail(1L, "test@subflow.dev"))
+                .willReturn(Optional.of(subscription));
 
         LocalDate futureCancelDate = LocalDate.now().plusDays(20);
         SubscriptionCancelRequest cancelRequest = new SubscriptionCancelRequest(futureCancelDate);
@@ -137,9 +145,12 @@ class SubscriptionServiceTest {
                 .nextBillingDate(alreadyAdvanced)
                 .monthlyExpense(BigDecimal.valueOf(17000))
                 .remindDaysBefore(3)
+                .ownerEmail("test@subflow.dev")
                 .build();
 
-        given(subscriptionRepository.findById(1L)).willReturn(Optional.of(subscription));
+        given(currentUserProvider.getCurrentUserEmail()).willReturn("test@subflow.dev");
+        given(subscriptionRepository.findByIdAndOwnerEmail(1L, "test@subflow.dev"))
+                .willReturn(Optional.of(subscription));
         given(expenseCalculator.calculateMonthlyExpense(eq(BigDecimal.valueOf(17000)), eq(BillingCycle.MONTHLY)))
                 .willReturn(BigDecimal.valueOf(17000));
 
