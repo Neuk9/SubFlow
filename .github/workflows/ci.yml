@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: subflow_test
+          POSTGRES_USER: subflow
+          POSTGRES_PASSWORD: subflow
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U subflow -d subflow_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: 체크아웃
+        uses: actions/checkout@v7
+
+      - name: JDK 21 설정
+        uses: actions/setup-java@v6
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Gradle 설정
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: 빌드 및 테스트
+        run: ./gradlew build --no-daemon
+
+      - name: 테스트 결과 업로드
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: build/reports/tests/test
+          retention-days: 7

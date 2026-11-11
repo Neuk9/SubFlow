@@ -1,0 +1,47 @@
+name: 리팩터링 / 개선
+description: 동작 변경 없이 코드 구조나 품질을 개선합니다.
+title: "[REFACTOR] "
+labels: ["refactor"]
+body:
+  - type: textarea
+    id: target
+    attributes:
+      label: 대상
+      description: 개선할 코드나 구조를 적어 주세요. (패키지, 클래스, 파일 경로)
+      placeholder: "예: com.subflow.subscription 패키지의 서비스 계층"
+    validations:
+      required: true
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: 개선 이유
+      description: 지금 구조의 어떤 점이 문제인가요?
+    validations:
+      required: true
+
+  - type: textarea
+    id: plan
+    attributes:
+      label: 개선 방안
+      description: 어떻게 바꿀 계획인가요?
+    validations:
+      required: true
+
+  - type: textarea
+    id: risk
+    attributes:
+      label: 영향 범위 / 위험 요소
+      description: 함께 바뀌어야 하는 코드, 테스트, 마이그레이션이 있다면 적어 주세요.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: promise
+    attributes:
+      label: 확인
+      options:
+        - label: 외부 동작(API 응답, 화면)은 변경되지 않습니다.
+          required: true
+        - label: 기존 테스트가 모두 통과하는 상태에서 시작합니다.
+          required: true

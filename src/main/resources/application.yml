@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: SubFlow
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:subflow}
+    username: ${DB_USERNAME:subflow}
+    password: ${DB_PASSWORD:subflow}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+  mustache:
+    suffix: .mustache
+
+server:
+  port: ${SERVER_PORT:8080}
+
+logging:
+  level:
+    org.hibernate.SQL: debug
