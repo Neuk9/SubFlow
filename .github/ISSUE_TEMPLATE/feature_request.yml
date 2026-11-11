@@ -3,11 +3,6 @@ description: 새로운 기능이나 개선 사항을 요청합니다.
 title: "[FEAT] "
 labels: ["enhancement"]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        기능 제안을 남겨 주셔서 감사합니다. "무엇을"뿐만 아니라 "왜"가 필요합니다.
-
   - type: checkboxes
     id: preflight
     attributes:
@@ -21,7 +16,6 @@ body:
     attributes:
       label: 배경 / 문제
       description: 어떤 불편함이나 필요 때문에 이 기능이 필요한가요?
-      placeholder: "예: 구독 갱신일이 다가와도 알림이 없어 결제를 놓치는 경우가 있습니다."
     validations:
       required: true
 
@@ -38,9 +32,6 @@ body:
     attributes:
       label: 완료 조건 (Acceptance Criteria)
       description: 이 이슈가 완료되었다고 판단할 수 있는 조건을 체크리스트로 적어 주세요.
-      value: |
-        - [ ] 
-        - [ ] 
     validations:
       required: true
 

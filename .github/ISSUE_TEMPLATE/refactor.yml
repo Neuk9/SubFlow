@@ -8,7 +8,6 @@ body:
     attributes:
       label: 대상
       description: 개선할 코드나 구조를 적어 주세요. (패키지, 클래스, 파일 경로)
-      placeholder: "예: com.subflow.subscription 패키지의 서비스 계층"
     validations:
       required: true
 
