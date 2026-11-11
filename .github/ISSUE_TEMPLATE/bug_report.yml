@@ -3,11 +3,6 @@ description: 의도한 대로 동작하지 않는 기능을 보고합니다.
 title: "[BUG] "
 labels: ["bug"]
 body:
-  - type: markdown
-    attributes:
-      value: |
-        버그를 발견해 주셔서 감사합니다. 재현 가능한 정보를 최대한 구체적으로 적어 주세요.
-
   - type: checkboxes
     id: preflight
     attributes:
@@ -23,7 +18,6 @@ body:
     attributes:
       label: 버그 설명
       description: 무엇이 문제인가요?
-      placeholder: "예: 로그인 후 대시보드로 이동하면 500 에러가 발생합니다."
     validations:
       required: true
 
@@ -32,14 +26,6 @@ body:
     attributes:
       label: 재현 절차
       description: 문제를 재현하는 순서를 단계별로 적어 주세요.
-      placeholder: |
-        1. `/login` 페이지에 접속한다.
-        2. 등록된 계정으로 로그인한다.
-        3. ...
-      value: |
-        1.
-        2.
-        3.
     validations:
       required: true
 
