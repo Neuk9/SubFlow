@@ -2,8 +2,6 @@
 
 구독 서비스를 한곳에서 관리하는 웹 애플리케이션입니다.
 
-> 이 문서는 팀 협업을 위한 최소한의 규칙을 담고 있습니다. 처음 합류했다면 [시작하기](#시작하기)부터 읽어 주세요.
-
 ## 기술 스택
 
 | 구분 | 버전 |
@@ -83,32 +81,3 @@ src/main/resources/
 src/test/java/com/subflow/    # 테스트 코드
 ```
 
-## 협업 규칙
-
-자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고해 주세요.
-
-- `main` 브랜치는 항상 배포 가능한 상태로 유지합니다.
-- 모든 변경은 이슈 → 브랜치 → PR 순서로 진행합니다.
-- PR은 **최소 1명의 승인**과 **CI 통과**가 필요합니다.
-- 리뷰 승인 없이 머지하지 않습니다.
-
-### 빠른 요약
-
-```bash
-# 1. 이슈 생성 후 브랜치
-git switch -c feat/#12-subscription-list
-
-# 2. 작업 및 커밋
-git add .
-git commit -m "feat: 구독 목록 조회 API 추가"
-
-# 3. PR 생성
-git push -u origin feat/#12-subscription-list
-gh pr create
-```
-
-## 문서
-
-- [CONTRIBUTING.md](CONTRIBUTING.md) — 브랜치 전략, 커밋 컨벤션, PR 규칙
-- [.github/CODEOWNERS](.github/CODEOWNERS) — 코드 소유자
-- [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) — PR 템플릿
