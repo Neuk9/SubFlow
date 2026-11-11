@@ -90,7 +90,7 @@ src/test/java/com/subflow/    # 테스트 코드
 - `main` 브랜치는 항상 배포 가능한 상태로 유지합니다.
 - 모든 변경은 이슈 → 브랜치 → PR 순서로 진행합니다.
 - PR은 **최소 1명의 승인**과 **CI 통과**가 필요합니다.
-- 리뷰 승인 없이 머지하지 않습니다.
+- 리뷰 승인 없이 머지하지 않습니다. **관리자도 예외는 없습니다.**
 
 ### 빠른 요약
 
@@ -112,3 +112,15 @@ gh pr create
 - [CONTRIBUTING.md](CONTRIBUTING.md) — 브랜치 전략, 커밋 컨벤션, PR 규칙
 - [.github/CODEOWNERS](.github/CODEOWNERS) — 코드 소유자
 - [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md) — PR 템플릿
+- [.github/workflows/ci.yml](.github/workflows/ci.yml) — CI 파이프라인
+
+## GitHub 설정 현황
+
+| 항목 | 설정 |
+| --- | --- |
+| 머지 방식 | Squash merge만 허용 |
+| 머지 후 브랜치 | 자동 삭제 |
+| `main` 보호 | PR 필수, 승인 1명, CODEOWNERS 승인, CI 통과, 선형 히스토리 |
+| 관리자 우회 | 불가 (`bypass_actors: []`) |
+| Discussions | 활성화 |
+| Dependabot / Secret scanning | 활성화 |
