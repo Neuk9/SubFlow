@@ -112,8 +112,7 @@ class SubscriptionServiceTest {
         given(subscriptionRepository.findById(1L)).willReturn(Optional.of(subscription));
 
         LocalDate futureCancelDate = LocalDate.now().plusDays(20);
-        SubscriptionCancelRequest cancelRequest = new SubscriptionCancelRequest();
-        cancelRequest.setScheduledDate(futureCancelDate);
+        SubscriptionCancelRequest cancelRequest = new SubscriptionCancelRequest(futureCancelDate);
 
         // when
         SubscriptionResponse response = subscriptionService.cancelSubscription(1L, cancelRequest);

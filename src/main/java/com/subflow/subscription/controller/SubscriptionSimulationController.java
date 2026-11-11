@@ -2,9 +2,8 @@ package com.subflow.subscription.controller;
 
 import com.subflow.subscription.dto.BillingRecordResponse;
 import com.subflow.subscription.dto.NotificationResponse;
-import com.subflow.subscription.repository.BillingRecordRepository;
-import com.subflow.subscription.repository.NotificationHistoryRepository;
 import com.subflow.subscription.scheduler.SubscriptionScheduler;
+import com.subflow.subscription.service.SimulationQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
@@ -23,8 +22,7 @@ import java.util.Map;
 public class SubscriptionSimulationController {
 
     private final SubscriptionScheduler subscriptionScheduler;
-    private final BillingRecordRepository billingRecordRepository;
-    private final NotificationHistoryRepository notificationHistoryRepository;
+    private final SimulationQueryService simulationQueryService;
 
     @PostMapping("/run-billing-batch")
     public ResponseEntity<Map<String, Object>> runBillingBatch() {
@@ -46,15 +44,11 @@ public class SubscriptionSimulationController {
 
     @GetMapping("/records")
     public ResponseEntity<List<BillingRecordResponse>> getBillingRecords() {
-        return ResponseEntity.ok(billingRecordRepository.findRecentWithSubscription().stream()
-                .map(BillingRecordResponse::from)
-                .toList());
+        return ResponseEntity.ok(simulationQueryService.getRecentBillingRecords());
     }
 
     @GetMapping("/notifications")
     public ResponseEntity<List<NotificationResponse>> getNotifications() {
-        return ResponseEntity.ok(notificationHistoryRepository.findRecentWithSubscription().stream()
-                .map(NotificationResponse::from)
-                .toList());
+        return ResponseEntity.ok(simulationQueryService.getRecentNotifications());
     }
 }

@@ -65,7 +65,7 @@ public class Subscription extends BaseTimeEntity {
     @Column(name = "remind_days_before", nullable = false)
     private Integer remindDaysBefore;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(length = 2000)
     private String memo;
 
     @Builder
