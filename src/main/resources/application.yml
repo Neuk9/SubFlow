@@ -7,6 +7,9 @@ spring:
     url: ${SPRING_DATASOURCE_URL:jdbc:h2:mem:subflow;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL}
     username: ${DB_USERNAME:sa}
     password: ${DB_PASSWORD:}
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
   jpa:
     open-in-view: false
     properties:
