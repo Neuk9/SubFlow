@@ -4,7 +4,7 @@ import com.subflow.subscription.domain.BillingCycle;
 import com.subflow.subscription.domain.Category;
 import com.subflow.subscription.dto.SubscriptionCreateRequest;
 import com.subflow.subscription.repository.SubscriptionRepository;
-import com.subflow.subscription.service.SubscriptionService;
+import com.subflow.subscription.service.SubscriptionCommandService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 
 @Slf4j
@@ -21,7 +22,8 @@ import java.time.LocalDate;
 public class DemoDataInitializer implements CommandLineRunner {
 
     private final SubscriptionRepository subscriptionRepository;
-    private final SubscriptionService subscriptionService;
+    private final SubscriptionCommandService subscriptionCommandService;
+    private final Clock clock;
 
     @Override
     public void run(String... args) {
@@ -30,10 +32,10 @@ public class DemoDataInitializer implements CommandLineRunner {
         }
 
         log.info("시연용 초기 구독 샘플 데이터 자동 생성 중...");
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
 
         // 1. 넷플릭스 (매월 25일 결제, 월 17,000원)
-        subscriptionService.createSubscription(SubscriptionCreateRequest.builder()
+        subscriptionCommandService.createSubscription(SubscriptionCreateRequest.builder()
                 .serviceName("넷플릭스 프리미엄")
                 .category(Category.OTT)
                 .fee(BigDecimal.valueOf(17000))
@@ -45,7 +47,7 @@ public class DemoDataInitializer implements CommandLineRunner {
                 .build());
 
         // 2. 유튜브 프리미엄 (매월 결제, 월 14,900원)
-        subscriptionService.createSubscription(SubscriptionCreateRequest.builder()
+        subscriptionCommandService.createSubscription(SubscriptionCreateRequest.builder()
                 .serviceName("유튜브 프리미엄")
                 .category(Category.OTT)
                 .fee(BigDecimal.valueOf(14900))
@@ -57,7 +59,7 @@ public class DemoDataInitializer implements CommandLineRunner {
                 .build());
 
         // 3. 쿠팡 와우 멤버십 (매월 결제, 월 7,890원)
-        subscriptionService.createSubscription(SubscriptionCreateRequest.builder()
+        subscriptionCommandService.createSubscription(SubscriptionCreateRequest.builder()
                 .serviceName("쿠팡 와우 멤버십")
                 .category(Category.SHOPPING)
                 .fee(BigDecimal.valueOf(7890))
@@ -69,7 +71,7 @@ public class DemoDataInitializer implements CommandLineRunner {
                 .build());
 
         // 4. Notion AI / 플러스 (연간 결제, 연 120,000원 -> 월 10,000원 환산)
-        subscriptionService.createSubscription(SubscriptionCreateRequest.builder()
+        subscriptionCommandService.createSubscription(SubscriptionCreateRequest.builder()
                 .serviceName("노션(Notion) Plus")
                 .category(Category.PRODUCTIVITY)
                 .fee(BigDecimal.valueOf(120000))

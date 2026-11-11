@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,9 +26,10 @@ public class SubscriptionStatisticsService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final Clock clock;
 
     public SubscriptionSummaryResponse getSummary() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         String ownerEmail = currentUserProvider.getCurrentUserEmail();
 
         BigDecimal totalMonthly = subscriptionRepository.sumMonthlyExpense(ownerEmail, SubscriptionStatus.ACTIVE);
@@ -77,7 +79,7 @@ public class SubscriptionStatisticsService {
     }
 
     public List<SubscriptionResponse> getUpcomingSubscriptions(int daysAhead) {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         LocalDate targetDate = today.plusDays(daysAhead);
         return subscriptionRepository.findUpcomingSubscriptions(
                         currentUserProvider.getCurrentUserEmail(),

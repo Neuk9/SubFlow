@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
@@ -25,6 +26,7 @@ public class SubscriptionCalendarService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final CurrentUserProvider currentUserProvider;
+    private final Clock clock;
 
     public List<CalendarEventDto> getMonthlyEvents(int year, int month) {
         if (month < 1 || month > 12) {

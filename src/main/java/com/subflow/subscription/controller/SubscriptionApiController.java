@@ -11,7 +11,8 @@ import com.subflow.subscription.dto.SubscriptionSummaryResponse;
 import com.subflow.subscription.dto.SubscriptionUpdateRequest;
 import com.subflow.subscription.service.SubscriptionCalendarService;
 import com.subflow.subscription.service.SubscriptionPreviewService;
-import com.subflow.subscription.service.SubscriptionService;
+import com.subflow.subscription.service.SubscriptionCommandService;
+import com.subflow.subscription.service.SubscriptionQueryService;
 import com.subflow.subscription.service.SubscriptionStatisticsService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
 
@@ -40,39 +42,41 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SubscriptionApiController {
 
-    private final SubscriptionService subscriptionService;
+    private final SubscriptionCommandService subscriptionCommandService;
+    private final SubscriptionQueryService subscriptionQueryService;
     private final SubscriptionStatisticsService statisticsService;
     private final SubscriptionCalendarService calendarService;
     private final SubscriptionPreviewService previewService;
+    private final Clock clock;
 
     @PostMapping
     public ResponseEntity<SubscriptionResponse> createSubscription(
             @Valid @RequestBody SubscriptionCreateRequest request) {
-        SubscriptionResponse response = subscriptionService.createSubscription(request);
+        SubscriptionResponse response = subscriptionCommandService.createSubscription(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @GetMapping
     public ResponseEntity<List<SubscriptionResponse>> getSubscriptions(
             @RequestParam(required = false) SubscriptionStatus status) {
-        return ResponseEntity.ok(subscriptionService.getSubscriptions(status));
+        return ResponseEntity.ok(subscriptionQueryService.getSubscriptions(status));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<SubscriptionResponse> getSubscription(@PathVariable Long id) {
-        return ResponseEntity.ok(subscriptionService.getSubscription(id));
+        return ResponseEntity.ok(subscriptionQueryService.getSubscription(id));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<SubscriptionResponse> updateSubscription(
             @PathVariable Long id,
             @Valid @RequestBody SubscriptionUpdateRequest request) {
-        return ResponseEntity.ok(subscriptionService.updateSubscription(id, request));
+        return ResponseEntity.ok(subscriptionCommandService.updateSubscription(id, request));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteSubscription(@PathVariable Long id) {
-        subscriptionService.deleteSubscription(id);
+        subscriptionCommandService.deleteSubscription(id);
         return ResponseEntity.noContent().build();
     }
 
@@ -80,17 +84,17 @@ public class SubscriptionApiController {
     public ResponseEntity<SubscriptionResponse> cancelSubscription(
             @PathVariable Long id,
             @RequestBody(required = false) SubscriptionCancelRequest request) {
-        return ResponseEntity.ok(subscriptionService.cancelSubscription(id, request));
+        return ResponseEntity.ok(subscriptionCommandService.cancelSubscription(id, request));
     }
 
     @PostMapping("/{id}/pause")
     public ResponseEntity<SubscriptionResponse> pauseSubscription(@PathVariable Long id) {
-        return ResponseEntity.ok(subscriptionService.pauseSubscription(id));
+        return ResponseEntity.ok(subscriptionCommandService.pauseSubscription(id));
     }
 
     @PostMapping("/{id}/resume")
     public ResponseEntity<SubscriptionResponse> resumeSubscription(@PathVariable Long id) {
-        return ResponseEntity.ok(subscriptionService.resumeSubscription(id));
+        return ResponseEntity.ok(subscriptionCommandService.resumeSubscription(id));
     }
 
     @GetMapping("/summary")
@@ -111,7 +115,7 @@ public class SubscriptionApiController {
     public ResponseEntity<List<CalendarEventDto>> getCalendarEvents(
             @RequestParam(required = false) Integer year,
             @RequestParam(required = false) Integer month) {
-        LocalDate now = LocalDate.now();
+        LocalDate now = LocalDate.now(clock);
         int targetYear = (year != null) ? year : now.getYear();
         int targetMonth = (month != null) ? month : now.getMonthValue();
         return ResponseEntity.ok(calendarService.getMonthlyEvents(targetYear, targetMonth));

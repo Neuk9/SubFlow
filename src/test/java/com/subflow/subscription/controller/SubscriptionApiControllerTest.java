@@ -9,7 +9,8 @@ import com.subflow.subscription.dto.SubscriptionCreateRequest;
 import com.subflow.subscription.dto.SubscriptionResponse;
 import com.subflow.subscription.service.SubscriptionCalendarService;
 import com.subflow.subscription.service.SubscriptionPreviewService;
-import com.subflow.subscription.service.SubscriptionService;
+import com.subflow.subscription.service.SubscriptionCommandService;
+import com.subflow.subscription.service.SubscriptionQueryService;
 import com.subflow.subscription.service.SubscriptionStatisticsService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -38,7 +39,10 @@ class SubscriptionApiControllerTest {
     private MockMvc mockMvc;
 
     @Mock
-    private SubscriptionService subscriptionService;
+    private SubscriptionCommandService subscriptionCommandService;
+
+    @Mock
+    private SubscriptionQueryService subscriptionQueryService;
 
     @Mock
     private SubscriptionStatisticsService statisticsService;
@@ -78,7 +82,7 @@ class SubscriptionApiControllerTest {
                 .dDay(14)
                 .build();
 
-        given(subscriptionService.createSubscription(any(SubscriptionCreateRequest.class))).willReturn(response);
+        given(subscriptionCommandService.createSubscription(any(SubscriptionCreateRequest.class))).willReturn(response);
 
         String json = """
                 {

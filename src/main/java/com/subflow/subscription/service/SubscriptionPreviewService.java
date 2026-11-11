@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 
 @Service
@@ -21,6 +22,7 @@ public class SubscriptionPreviewService {
 
     private final BillingDateCalculator billingDateCalculator;
     private final ExpenseCalculator expenseCalculator;
+    private final Clock clock;
 
     public PreviewResponse calculatePreview(BigDecimal fee, BillingCycle billingCycle,
                                             Integer billingDay, LocalDate startDate) {
@@ -31,7 +33,7 @@ public class SubscriptionPreviewService {
             throw new BusinessException(ErrorCode.INVALID_BILLING_DAY);
         }
 
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         LocalDate start = (startDate != null) ? startDate : today;
         Integer day = (billingDay != null) ? billingDay : start.getDayOfMonth();
 

@@ -16,6 +16,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +30,7 @@ public class SubscriptionScheduler {
     private final BillingRecordRepository billingRecordRepository;
     private final NotificationHistoryRepository notificationHistoryRepository;
     private final BillingDateCalculator billingDateCalculator;
+    private final Clock clock;
 
     /**
      * [배치 1] 결제일 갱신 및 결제 이력 생성 (매일 00:00)
@@ -38,7 +40,7 @@ public class SubscriptionScheduler {
     @Scheduled(cron = "0 0 0 * * *", zone = "${subflow.scheduler.zone:Asia/Seoul}")
     @Transactional
     public int processDueSubscriptions() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         List<Subscription> dueSubscriptions = subscriptionRepository
                 .findAllByStatusAndNextBillingDateLessThanEqual(SubscriptionStatus.ACTIVE, today);
 
@@ -90,7 +92,7 @@ public class SubscriptionScheduler {
     @Scheduled(cron = "0 0 9 * * *", zone = "${subflow.scheduler.zone:Asia/Seoul}")
     @Transactional
     public int sendUpcomingPaymentNotifications() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         List<Subscription> activeSubscriptions = subscriptionRepository
                 .findAllByStatusOrderByNextBillingDateAsc(SubscriptionStatus.ACTIVE);
 
@@ -120,7 +122,7 @@ public class SubscriptionScheduler {
                         .type(NotificationType.UPCOMING_PAYMENT)
                         .title(title)
                         .message(message)
-                        .sentAt(LocalDateTime.now())
+                        .sentAt(LocalDateTime.now(clock))
                         .build();
 
                 notificationHistoryRepository.save(history);
@@ -139,7 +141,7 @@ public class SubscriptionScheduler {
     @Scheduled(cron = "0 5 0 * * *", zone = "${subflow.scheduler.zone:Asia/Seoul}")
     @Transactional
     public int processExpiringSubscriptions() {
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(clock);
         List<Subscription> expiringSubscriptions = subscriptionRepository
                 .findAllByStatusAndCancellationScheduledAtLessThanEqual(SubscriptionStatus.EXPIRING, today);
 
@@ -148,14 +150,14 @@ public class SubscriptionScheduler {
         int count = 0;
         for (Subscription sub : expiringSubscriptions) {
             try {
-                sub.cancelImmediately();
+                sub.cancelImmediately(today);
 
                 NotificationHistory history = NotificationHistory.builder()
                         .subscription(sub)
                         .type(NotificationType.EXPIRATION_WARNING)
                         .title(String.format("[%s] 구독 해지 처리 완료", sub.getServiceName()))
                         .message(String.format("'%s' 구독이 요청하신 해지 예정일에 도달하여 해지 완료되었습니다.", sub.getServiceName()))
-                        .sentAt(LocalDateTime.now())
+                        .sentAt(LocalDateTime.now(clock))
                         .build();
                 notificationHistoryRepository.save(history);
                 count++;
