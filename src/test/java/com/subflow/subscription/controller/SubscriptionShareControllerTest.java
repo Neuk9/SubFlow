@@ -58,7 +58,7 @@ class SubscriptionShareControllerTest {
     @DisplayName("공유 멤버 목록을 정산 상태와 함께 반환한다")
     void returnsShares() throws Exception {
         given(shareService.getShares(eq(1L), eq("2026-11"))).willReturn(List.of(
-                new ShareResponse(10L, "민수", new BigDecimal("8500"), true, LocalDate.of(2026, 11, 20), "m@b.com", ShareStatus.ACTIVE, true, LocalDate.of(2026, 11, 19))));
+                new ShareResponse(10L, "민수", new BigDecimal("8500"), true, LocalDate.of(2026, 11, 20), "m@b.com", ShareStatus.ACTIVE, true, LocalDate.of(2026, 11, 19), null)));
 
         mockMvc.perform(get("/api/subscriptions/{id}/shares", 1L).param("period", "2026-11"))
                 .andExpect(status().isOk())
@@ -70,7 +70,7 @@ class SubscriptionShareControllerTest {
     @DisplayName("멤버 추가 요청을 서비스로 전달한다")
     void addsShare() throws Exception {
         given(shareService.addShare(eq(1L), any(ShareCreateRequest.class)))
-                .willReturn(new ShareResponse(10L, "민수", new BigDecimal("8500"), false, null, null, ShareStatus.ACTIVE, false, null));
+                .willReturn(new ShareResponse(10L, "민수", new BigDecimal("8500"), false, null, null, ShareStatus.ACTIVE, false, null, null));
 
         mockMvc.perform(post("/api/subscriptions/{id}/shares", 1L)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -135,7 +135,7 @@ class SubscriptionShareControllerTest {
         given(shareService.getSharedWithMe("2026-11")).willReturn(List.of(
                 new MemberShareResponse(10L, 1L, "넷플릭스 프리미엄", new BigDecimal("8500"),
                         ShareStatus.ACTIVE, true, LocalDate.of(2026, 11, 19), false,
-                        LocalDate.of(2026, 12, 25))));
+                        LocalDate.of(2026, 12, 25), null)));
 
         mockMvc.perform(put("/api/shares/{id}/payment", 10L)
                         .contentType(MediaType.APPLICATION_JSON)

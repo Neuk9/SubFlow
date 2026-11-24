@@ -74,6 +74,12 @@ public class SubscriptionShareController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/shares/{shareId}/reinvite")
+    public ResponseEntity<Void> reinvite(@PathVariable Long shareId) {
+        shareService.reinvite(shareId);
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/shares/{shareId}/payment")
     public ResponseEntity<Void> markPayment(@PathVariable Long shareId,
                                             @Valid @RequestBody SharePaymentRequest request) {

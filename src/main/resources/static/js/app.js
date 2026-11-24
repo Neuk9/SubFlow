@@ -906,6 +906,7 @@ async function loadShares() {
 function shareStatusLabel(status) {
     if (status === 'PENDING') return '초대 대기';
     if (status === 'DECLINED') return '거절';
+    if (status === 'EXPIRED') return '만료';
     return '참여 중';
 }
 
