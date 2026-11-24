@@ -16,6 +16,9 @@ public class ServiceCatalogResponse {
     private String categoryDescription;
     private String categoryColor;
     private String logo;
+    private String logoType;
     private String brandColor;
     private List<ServicePlanResponse> plans;
+    private String cancelGuide;
+    private String cancelUrl;
 }

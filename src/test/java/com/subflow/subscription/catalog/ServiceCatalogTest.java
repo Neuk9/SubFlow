@@ -73,6 +73,7 @@ class ServiceCatalogTest {
                 .orElseThrow();
 
         assertThat(netflix.getLogo()).isEqualTo("netflix");
+        assertThat(netflix.getLogoType()).isEqualTo("svg");
         assertThat(netflix.getBrandColor()).isEqualTo("#E50914");
 
         ServiceCatalogResponse disney = ServiceCatalog.services().stream()
@@ -80,7 +81,8 @@ class ServiceCatalogTest {
                 .findFirst()
                 .orElseThrow();
 
-        assertThat(disney.getLogo()).isNull();
+        assertThat(disney.getLogo()).isEqualTo("disney");
+        assertThat(disney.getLogoType()).isEqualTo("png");
         assertThat(disney.getCategoryColor()).isEqualTo(Category.OTT.getColor());
     }
 }

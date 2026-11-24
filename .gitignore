@@ -49,3 +49,6 @@ bin/
 # 개인 설정이 필요하면 application-local-secret.yml 을 사용한다.
 application-local-secret.yml
 application-secret.yml
+
+### Visual companion ###
+.superpowers/

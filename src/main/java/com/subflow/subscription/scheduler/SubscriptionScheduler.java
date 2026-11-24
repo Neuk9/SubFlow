@@ -51,15 +51,20 @@ public class SubscriptionScheduler {
             // 한 구독에서 실패해도 나머지 구독 처리는 계속한다.
             try {
                 while (!sub.getNextBillingDate().isAfter(today)) {
-                    BillingRecord record = BillingRecord.builder()
-                            .subscription(sub)
-                            .billingDate(sub.getNextBillingDate())
-                            .amount(sub.getFee())
-                            .status(BillingStatus.PAID)
-                            .memo("정기 자동 결제")
-                            .build();
-                    billingRecordRepository.save(record);
-                    recorded++;
+                    boolean alreadyRecorded = billingRecordRepository
+                            .existsBySubscriptionIdAndBillingDateAndAmount(
+                                    sub.getId(), sub.getNextBillingDate(), sub.getFee());
+                    if (!alreadyRecorded) {
+                        BillingRecord record = BillingRecord.builder()
+                                .subscription(sub)
+                                .billingDate(sub.getNextBillingDate())
+                                .amount(sub.getFee())
+                                .status(BillingStatus.PAID)
+                                .memo("정기 자동 결제")
+                                .build();
+                        billingRecordRepository.save(record);
+                        recorded++;
+                    }
 
                     LocalDate nextCycleDate = billingDateCalculator.calculateNextCycleDate(
                             sub.getBillingCycle(),
