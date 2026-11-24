@@ -117,6 +117,9 @@ public class SubscriptionShareService {
     @Transactional
     public void reinvite(Long shareId) {
         SubscriptionShare share = findOwnedShare(shareId);
+        if (share.getSubscription().getStatus() == SubscriptionStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.ALREADY_CANCELED);
+        }
         LocalDateTime now = LocalDateTime.now(clock);
         boolean reinvitable = share.getStatus() == ShareStatus.DECLINED
                 || share.getStatus() == ShareStatus.EXPIRED

@@ -240,6 +240,23 @@ class SubscriptionShareServiceTest {
     }
 
     @Test
+    @DisplayName("해지된 구독의 공유는 재초대할 수 없다")
+    void rejectsReinviteForCanceledSubscription() {
+        Subscription canceled = subscription();
+        canceled.cancelImmediately(LocalDate.of(2026, 11, 1));
+        SubscriptionShare share = share(10L, canceled, "민수", "8500");
+        ReflectionTestUtils.setField(share, "status", ShareStatus.DECLINED);
+        given(shareRepository.findById(10L)).willReturn(Optional.of(share));
+        given(subscriptionFinder.currentOwnerEmail()).willReturn(OWNER);
+
+        assertThatThrownBy(() -> shareService.reinvite(10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.ALREADY_CANCELED);
+        assertThat(share.getStatus()).isEqualTo(ShareStatus.DECLINED);
+    }
+
+    @Test
     @DisplayName("해지된 구독의 공유는 정산 요약에서 제외된다")
     void excludesCanceledSubscriptionFromSummary() {
         Subscription canceled = subscription();
