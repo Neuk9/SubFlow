@@ -1,5 +1,6 @@
 package com.subflow.subscription.dto;
 
+import com.subflow.global.common.MoneyFormatter;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -15,4 +16,12 @@ public class SubscriptionSummaryResponse {
     private long activeCount;
     private long upcomingCountWithin7Days;
     private List<CategoryExpenseDto> categoryExpenses;
+
+    public String getTotalMonthlyExpenseFormatted() {
+        return MoneyFormatter.format(totalMonthlyExpense);
+    }
+
+    public String getTotalYearlyExpenseFormatted() {
+        return MoneyFormatter.format(totalYearlyExpense);
+    }
 }
