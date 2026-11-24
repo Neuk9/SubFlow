@@ -37,6 +37,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -209,6 +210,20 @@ public class CsvImportService {
         if (dateColumn == null || merchantColumn == null || amountColumn == null) {
             return detected;
         }
+
+        int width = document.rows().stream()
+                .mapToInt(row -> row.values().size())
+                .max()
+                .orElse(0);
+        boolean duplicated = dateColumn.equals(merchantColumn)
+                || dateColumn.equals(amountColumn)
+                || merchantColumn.equals(amountColumn);
+        boolean outOfRange = dateColumn < 0 || merchantColumn < 0 || amountColumn < 0
+                || dateColumn >= width || merchantColumn >= width || amountColumn >= width;
+        if (duplicated || outOfRange) {
+            throw new BusinessException(ErrorCode.INVALID_COLUMN_MAPPING);
+        }
+
         int headerRowIndex = detected.headerRowIndex() >= 0
                 ? detected.headerRowIndex()
                 : (hasHeader ? 0 : -1);
@@ -252,7 +267,8 @@ public class CsvImportService {
                 addSkipped(skipped, row.rowNumber(), "중복 행");
                 continue;
             }
-            payments.add(new ParsedPayment(row.rowNumber(), date.get(), trimmedMerchant, amount.get()));
+            BigDecimal normalizedAmount = amount.get().setScale(2, RoundingMode.HALF_UP);
+            payments.add(new ParsedPayment(row.rowNumber(), date.get(), trimmedMerchant, normalizedAmount));
         }
         return payments;
     }
