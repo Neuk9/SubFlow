@@ -5,7 +5,10 @@ import com.subflow.global.exception.ErrorCode;
 import com.subflow.subscription.domain.SettlementRecord;
 import com.subflow.subscription.domain.Subscription;
 import com.subflow.subscription.domain.SubscriptionShare;
+import com.subflow.subscription.domain.ShareStatus;
+import com.subflow.subscription.dto.MemberShareResponse;
 import com.subflow.subscription.dto.ShareCreateRequest;
+import com.subflow.subscription.dto.SharePaymentRequest;
 import com.subflow.subscription.dto.ShareResponse;
 import com.subflow.subscription.dto.ShareSettleRequest;
 import com.subflow.subscription.dto.ShareSummaryResponse;
@@ -51,15 +54,83 @@ public class SubscriptionShareService {
     public ShareResponse addShare(Long subscriptionId, ShareCreateRequest request) {
         Subscription subscription = subscriptionFinder.findOwnedById(subscriptionId);
         String memberName = request.memberName().trim();
+        String memberEmail = normalizeEmail(request.memberEmail());
         if (shareRepository.existsBySubscriptionIdAndMemberNameIgnoreCase(subscriptionId, memberName)) {
+            throw new BusinessException(ErrorCode.DUPLICATE_SHARE_MEMBER);
+        }
+        if (memberEmail != null
+                && shareRepository.existsBySubscriptionIdAndMemberEmailIgnoreCase(subscriptionId, memberEmail)) {
             throw new BusinessException(ErrorCode.DUPLICATE_SHARE_MEMBER);
         }
         SubscriptionShare saved = shareRepository.save(SubscriptionShare.builder()
                 .subscription(subscription)
                 .memberName(memberName)
                 .shareAmount(request.shareAmount())
+                .memberEmail(memberEmail)
+                .status(memberEmail == null ? ShareStatus.ACTIVE : ShareStatus.PENDING)
                 .build());
         return toResponse(saved, null);
+    }
+
+    @Transactional
+    public void acceptInvitation(Long shareId) {
+        SubscriptionShare share = findMemberShare(shareId);
+        if (share.getStatus() != ShareStatus.PENDING) {
+            throw new BusinessException(ErrorCode.INVALID_SHARE_STATUS);
+        }
+        share.accept();
+    }
+
+    @Transactional
+    public void declineInvitation(Long shareId) {
+        SubscriptionShare share = findMemberShare(shareId);
+        if (share.getStatus() != ShareStatus.PENDING) {
+            throw new BusinessException(ErrorCode.INVALID_SHARE_STATUS);
+        }
+        share.decline();
+    }
+
+    @Transactional
+    public void markPayment(Long shareId, SharePaymentRequest request) {
+        SubscriptionShare share = findMemberShare(shareId);
+        if (share.getStatus() != ShareStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.INVALID_SHARE_STATUS);
+        }
+        SettlementRecord record = settlementRepository
+                .findByShareIdAndPeriod(shareId, request.period())
+                .orElseGet(() -> SettlementRecord.builder()
+                        .share(share)
+                        .period(request.period())
+                        .build());
+        if (request.paid()) {
+            record.markPaid(LocalDate.now(clock));
+        } else {
+            record.cancelPaid();
+        }
+        settlementRepository.save(record);
+    }
+
+    public List<MemberShareResponse> getSharedWithMe(String period) {
+        String resolvedPeriod = resolvePeriod(period);
+        String email = subscriptionFinder.currentOwnerEmail();
+        List<SubscriptionShare> shares = shareRepository
+                .findAllByMemberEmailIgnoreCaseOrderByIdAsc(email).stream()
+                .filter(share -> share.getStatus() == ShareStatus.PENDING
+                        || share.getStatus() == ShareStatus.ACTIVE)
+                .toList();
+        Map<Long, SettlementRecord> records = recordsByShareId(shares, resolvedPeriod);
+        return shares.stream()
+                .map(share -> new MemberShareResponse(
+                        share.getId(),
+                        share.getSubscription().getId(),
+                        share.getSubscription().getServiceName(),
+                        share.getShareAmount(),
+                        share.getStatus(),
+                        isMemberPaid(records.get(share.getId())),
+                        memberPaidAt(records.get(share.getId())),
+                        isSettled(records.get(share.getId())),
+                        share.getSubscription().getNextBillingDate()))
+                .toList();
     }
 
     @Transactional
@@ -88,7 +159,9 @@ public class SubscriptionShareService {
     public ShareSummaryResponse getSummary(String period) {
         String resolvedPeriod = resolvePeriod(period);
         List<SubscriptionShare> shares = shareRepository
-                .findAllBySubscriptionOwnerEmailOrderByIdAsc(subscriptionFinder.currentOwnerEmail());
+                .findAllBySubscriptionOwnerEmailOrderByIdAsc(subscriptionFinder.currentOwnerEmail()).stream()
+                .filter(share -> share.getStatus() == ShareStatus.ACTIVE)
+                .toList();
         Map<Long, SettlementRecord> records = recordsByShareId(shares, resolvedPeriod);
 
         BigDecimal total = sum(shares, share -> true);
@@ -99,6 +172,23 @@ public class SubscriptionShareService {
                 total,
                 received,
                 total.subtract(received));
+    }
+
+    private SubscriptionShare findMemberShare(Long shareId) {
+        SubscriptionShare share = shareRepository.findById(shareId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SHARE_NOT_FOUND));
+        String email = subscriptionFinder.currentOwnerEmail();
+        if (share.getMemberEmail() == null || !share.getMemberEmail().equalsIgnoreCase(email)) {
+            throw new BusinessException(ErrorCode.SHARE_NOT_FOUND);
+        }
+        return share;
+    }
+
+    private String normalizeEmail(String email) {
+        if (email == null || email.isBlank()) {
+            return null;
+        }
+        return email.trim();
     }
 
     private SubscriptionShare findOwnedShare(Long shareId) {
@@ -130,13 +220,25 @@ public class SubscriptionShareService {
         return record != null && record.isSettled();
     }
 
+    private boolean isMemberPaid(SettlementRecord record) {
+        return record != null && record.isMemberPaid();
+    }
+
+    private LocalDate memberPaidAt(SettlementRecord record) {
+        return record == null ? null : record.getMemberPaidAt();
+    }
+
     private ShareResponse toResponse(SubscriptionShare share, SettlementRecord record) {
         return new ShareResponse(
                 share.getId(),
                 share.getMemberName(),
                 share.getShareAmount(),
                 isSettled(record),
-                record == null ? null : record.getSettledAt());
+                record == null ? null : record.getSettledAt(),
+                share.getMemberEmail(),
+                share.getStatus(),
+                isMemberPaid(record),
+                memberPaidAt(record));
     }
 
     private String resolvePeriod(String period) {

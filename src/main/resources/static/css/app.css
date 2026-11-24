@@ -2932,3 +2932,9 @@ body { font-size: 16px; }
 
 .sf-benefit-panel { margin-bottom: 18px; }
 .sf-insight-muted { color: var(--sf-muted); font-size: 13px; white-space: nowrap; }
+
+/* Shared invitation states */
+.sf-share-status { margin-left: 6px; padding: 1px 7px; border-radius: 980px; background: #1f1f26; color: var(--sf-muted); font-size: 11px; font-weight: 650; }
+.sf-share-actions { display: flex; gap: 6px; flex: 0 0 auto; }
+.sf-share-form { grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1fr) auto; }
+@media (max-width: 720px) { .sf-share-form { grid-template-columns: minmax(0, 1fr); } }

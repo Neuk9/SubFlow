@@ -1,6 +1,8 @@
 package com.subflow.subscription.controller;
 
+import com.subflow.subscription.dto.MemberShareResponse;
 import com.subflow.subscription.dto.ShareCreateRequest;
+import com.subflow.subscription.dto.SharePaymentRequest;
 import com.subflow.subscription.dto.ShareResponse;
 import com.subflow.subscription.dto.ShareSettleRequest;
 import com.subflow.subscription.dto.ShareSummaryResponse;
@@ -50,6 +52,30 @@ public class SubscriptionShareController {
                                        @Valid @RequestBody ShareSettleRequest request) {
         shareService.settle(shareId, request);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/shares/{shareId}/accept")
+    public ResponseEntity<Void> accept(@PathVariable Long shareId) {
+        shareService.acceptInvitation(shareId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/shares/{shareId}/decline")
+    public ResponseEntity<Void> decline(@PathVariable Long shareId) {
+        shareService.declineInvitation(shareId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/shares/{shareId}/payment")
+    public ResponseEntity<Void> markPayment(@PathVariable Long shareId,
+                                            @Valid @RequestBody SharePaymentRequest request) {
+        shareService.markPayment(shareId, request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/shares/shared")
+    public List<MemberShareResponse> getSharedWithMe(@RequestParam(required = false) String period) {
+        return shareService.getSharedWithMe(period);
     }
 
     @GetMapping("/shares/summary")

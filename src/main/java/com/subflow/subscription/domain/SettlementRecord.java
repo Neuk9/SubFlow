@@ -43,12 +43,21 @@ public class SettlementRecord extends BaseTimeEntity {
     @Column(name = "settled_at")
     private LocalDate settledAt;
 
+    @Column(name = "member_paid", nullable = false)
+    private boolean memberPaid;
+
+    @Column(name = "member_paid_at")
+    private LocalDate memberPaidAt;
+
     @Builder
-    public SettlementRecord(SubscriptionShare share, String period, boolean settled, LocalDate settledAt) {
+    public SettlementRecord(SubscriptionShare share, String period, boolean settled, LocalDate settledAt,
+                            boolean memberPaid, LocalDate memberPaidAt) {
         this.share = share;
         this.period = period;
         this.settled = settled;
         this.settledAt = settledAt;
+        this.memberPaid = memberPaid;
+        this.memberPaidAt = memberPaidAt;
     }
 
     public void settle(LocalDate date) {
@@ -59,5 +68,15 @@ public class SettlementRecord extends BaseTimeEntity {
     public void unsettle() {
         this.settled = false;
         this.settledAt = null;
+    }
+
+    public void markPaid(LocalDate date) {
+        this.memberPaid = true;
+        this.memberPaidAt = date;
+    }
+
+    public void cancelPaid() {
+        this.memberPaid = false;
+        this.memberPaidAt = null;
     }
 }

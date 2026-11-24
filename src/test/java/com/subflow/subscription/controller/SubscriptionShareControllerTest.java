@@ -1,7 +1,10 @@
 package com.subflow.subscription.controller;
 
 import com.subflow.global.exception.GlobalExceptionHandler;
+import com.subflow.subscription.domain.ShareStatus;
+import com.subflow.subscription.dto.MemberShareResponse;
 import com.subflow.subscription.dto.ShareCreateRequest;
+import com.subflow.subscription.dto.SharePaymentRequest;
 import com.subflow.subscription.dto.ShareResponse;
 import com.subflow.subscription.dto.ShareSettleRequest;
 import com.subflow.subscription.dto.ShareSummaryResponse;
@@ -55,7 +58,7 @@ class SubscriptionShareControllerTest {
     @DisplayName("공유 멤버 목록을 정산 상태와 함께 반환한다")
     void returnsShares() throws Exception {
         given(shareService.getShares(eq(1L), eq("2026-11"))).willReturn(List.of(
-                new ShareResponse(10L, "민수", new BigDecimal("8500"), true, LocalDate.of(2026, 11, 20))));
+                new ShareResponse(10L, "민수", new BigDecimal("8500"), true, LocalDate.of(2026, 11, 20), "m@b.com", ShareStatus.ACTIVE, true, LocalDate.of(2026, 11, 19))));
 
         mockMvc.perform(get("/api/subscriptions/{id}/shares", 1L).param("period", "2026-11"))
                 .andExpect(status().isOk())
@@ -67,7 +70,7 @@ class SubscriptionShareControllerTest {
     @DisplayName("멤버 추가 요청을 서비스로 전달한다")
     void addsShare() throws Exception {
         given(shareService.addShare(eq(1L), any(ShareCreateRequest.class)))
-                .willReturn(new ShareResponse(10L, "민수", new BigDecimal("8500"), false, null));
+                .willReturn(new ShareResponse(10L, "민수", new BigDecimal("8500"), false, null, null, ShareStatus.ACTIVE, false, null));
 
         mockMvc.perform(post("/api/subscriptions/{id}/shares", 1L)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -112,6 +115,37 @@ class SubscriptionShareControllerTest {
                         .content("{\"period\":\"2026-13\",\"settled\":true}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_INPUT_VALUE"));
+    }
+
+    @Test
+    @DisplayName("초대 수락과 거절은 204를 반환한다")
+    void acceptsAndDeclinesInvitations() throws Exception {
+        mockMvc.perform(post("/api/shares/{id}/accept", 10L))
+                .andExpect(status().isNoContent());
+        mockMvc.perform(post("/api/shares/{id}/decline", 10L))
+                .andExpect(status().isNoContent());
+
+        then(shareService).should().acceptInvitation(10L);
+        then(shareService).should().declineInvitation(10L);
+    }
+
+    @Test
+    @DisplayName("멤버 송금 완료 처리와 공유받은 목록을 제공한다")
+    void marksPaymentAndListsShared() throws Exception {
+        given(shareService.getSharedWithMe("2026-11")).willReturn(List.of(
+                new MemberShareResponse(10L, 1L, "넷플릭스 프리미엄", new BigDecimal("8500"),
+                        ShareStatus.ACTIVE, true, LocalDate.of(2026, 11, 19), false,
+                        LocalDate.of(2026, 12, 25))));
+
+        mockMvc.perform(put("/api/shares/{id}/payment", 10L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"period\":\"2026-11\",\"paid\":true}"))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/shares/shared").param("period", "2026-11"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].serviceName").value("넷플릭스 프리미엄"))
+                .andExpect(jsonPath("$[0].memberPaid").value(true));
     }
 
     @Test

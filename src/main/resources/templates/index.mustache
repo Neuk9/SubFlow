@@ -10,7 +10,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="/css/app.css?v=20261125o">
+    <link rel="stylesheet" href="/css/app.css?v=20261125p">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -42,6 +42,9 @@
             <button class="sf-tab" id="tab-charts-btn" type="button" role="tab"
                     data-bs-toggle="pill" data-bs-target="#tab-charts" aria-controls="tab-charts"
                     aria-selected="false" onclick="renderCharts()">분석</button>
+            <button class="sf-tab" id="tab-shares-btn" type="button" role="tab"
+                    data-bs-toggle="pill" data-bs-target="#tab-shares" aria-controls="tab-shares"
+                    aria-selected="false" onclick="loadShared()">공유</button>
         </nav>
 
         <div class="sf-top-actions">
@@ -248,6 +251,24 @@
                     <div class="sf-empty-line">배치를 실행하면 알림과 결제 기록이 표시됩니다.</div>
                 </div>
             </section>
+        </div>
+
+        <!-- 4. 공유받은 구독 -->
+        <div class="tab-pane fade" id="tab-shares" role="tabpanel" aria-labelledby="tab-shares-btn">
+            <div class="sf-insight-grid">
+                <section class="sf-insight-panel">
+                    <h2 class="sf-list-title">초대 받은 구독</h2>
+                    <div class="sf-insight-list" id="shareInvitations">
+                        <div class="sf-empty-line">불러오는 중…</div>
+                    </div>
+                </section>
+                <section class="sf-insight-panel">
+                    <h2 class="sf-list-title">참여 중인 구독</h2>
+                    <div class="sf-insight-list" id="shareActive">
+                        <div class="sf-empty-line">불러오는 중…</div>
+                    </div>
+                </section>
+            </div>
         </div>
 
     </div>
@@ -529,6 +550,7 @@
                 <form class="sf-share-form" onsubmit="addShare(event)">
                     <input type="text" class="form-control" id="shareMemberName" placeholder="멤버 이름" maxlength="50">
                     <input type="number" class="form-control" id="shareAmount" placeholder="분담 금액" min="1">
+                    <input type="email" class="form-control" id="shareMemberEmail" placeholder="이메일 (선택)">
                     <button type="submit" class="sf-btn sf-btn-primary">추가</button>
                 </form>
                 <div class="sf-error d-none" id="shareError" role="alert"></div>
@@ -560,6 +582,6 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/js/app.js?v=20261125o" defer></script>
+<script src="/js/app.js?v=20261125p" defer></script>
 </body>
 </html>
