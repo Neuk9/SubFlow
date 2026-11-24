@@ -6,12 +6,14 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 키별 슬라이딩 윈도우 요청 제한기.
  *
- * <p>각 키의 요청 시각을 보관하고 {@code now - window} 보다 오래된 시각을 제거한다.
- * 키가 최대치를 넘으면 가장 오래된 요청 시각을 가진 키부터 제거해 메모리 증가를 막는다.
+ * <p>각 키의 요청 시각과 만료 시각을 보관하고 {@code now - window} 보다 오래된 시각을 제거한다.
+ * 키가 최대치를 넘으면 단일 스레드에서 만료된 키를 먼저 정리하고, 그래도 초과하면
+ * 가장 오래 활동이 없는 키(LRU)부터 제거해 메모리 증가와 활성 차단 키의 조기 초기화를 막는다.
  * {@link Clock}을 주입해 테스트에서 시간을 결정적으로 제어할 수 있다.</p>
  */
 public class SlidingWindowLimiter {
@@ -19,7 +21,8 @@ public class SlidingWindowLimiter {
     static final int MAX_KEYS = 10_000;
 
     private final Clock clock;
-    private final Map<String, Deque<Long>> requests = new ConcurrentHashMap<>();
+    private final Map<String, Bucket> requests = new ConcurrentHashMap<>();
+    private final AtomicBoolean evicting = new AtomicBoolean(false);
 
     public SlidingWindowLimiter(Clock clock) {
         this.clock = clock;
@@ -30,24 +33,29 @@ public class SlidingWindowLimiter {
      */
     public boolean tryAcquire(String key, int limit, Duration window) {
         long now = clock.millis();
-        long cutoff = now - window.toMillis();
+        long windowMillis = window.toMillis();
+        long cutoff = now - windowMillis;
         boolean[] acquired = {false};
 
-        requests.compute(key, (ignored, timestamps) -> {
-            Deque<Long> deque = timestamps == null ? new ArrayDeque<>() : timestamps;
-            synchronized (deque) {
-                while (!deque.isEmpty() && deque.peekFirst() <= cutoff) {
-                    deque.pollFirst();
+        requests.compute(key, (ignored, existing) -> {
+            Bucket bucket = existing == null ? new Bucket() : existing;
+            synchronized (bucket) {
+                while (!bucket.timestamps.isEmpty() && bucket.timestamps.peekFirst() <= cutoff) {
+                    bucket.timestamps.pollFirst();
                 }
-                if (deque.size() < limit) {
-                    deque.addLast(now);
+                bucket.lastActivityAt = now;
+                if (bucket.timestamps.size() < limit) {
+                    bucket.timestamps.addLast(now);
                     acquired[0] = true;
                 }
+                Long latest = bucket.timestamps.peekLast();
+                long candidateExpiry = latest == null ? now : latest + windowMillis;
+                bucket.expiresAt = Math.max(bucket.expiresAt, candidateExpiry);
             }
-            return deque;
+            return bucket;
         });
 
-        evictIfNeeded();
+        evictIfNeeded(now);
         return acquired[0];
     }
 
@@ -56,13 +64,13 @@ public class SlidingWindowLimiter {
      * 윈도우에서 가장 오래된 요청이 만료될 때까지 남은 시간을 올림한다.
      */
     public long retryAfterSeconds(String key, Duration window) {
-        Deque<Long> deque = requests.get(key);
-        if (deque == null) {
+        Bucket bucket = requests.get(key);
+        if (bucket == null) {
             return Math.max(1L, window.toSeconds());
         }
         Long oldest;
-        synchronized (deque) {
-            oldest = deque.peekFirst();
+        synchronized (bucket) {
+            oldest = bucket.timestamps.peekFirst();
         }
         if (oldest == null) {
             return 0L;
@@ -74,34 +82,51 @@ public class SlidingWindowLimiter {
         return Math.max(1L, (remainingMillis + 999) / 1000);
     }
 
-    private void evictIfNeeded() {
-        if (requests.size() <= MAX_KEYS) {
+    private void evictIfNeeded(long now) {
+        if (requests.size() <= MAX_KEYS || !evicting.compareAndSet(false, true)) {
             return;
         }
 
-        // 키마다 윈도우가 다르므로 호출자의 윈도우로 다른 키의 기록을 정리하면 안 된다.
-        // (예: 1분 요청이 1시간 키의 유효한 기록을 지우는 문제)
-        // 오래된 키부터 통째로 제거하는 것만으로 상한을 유지하고, 만료된 기록은
-        // 해당 키의 다음 요청에서 자기 윈도우 기준으로 정리된다.
-        while (requests.size() > MAX_KEYS) {
-            String oldestKey = null;
-            long oldestTimestamp = Long.MAX_VALUE;
-            for (Map.Entry<String, Deque<Long>> entry : requests.entrySet()) {
-                Deque<Long> deque = entry.getValue();
-                Long first;
-                synchronized (deque) {
-                    first = deque.peekFirst();
-                }
-                long timestamp = first == null ? Long.MIN_VALUE : first;
-                if (timestamp < oldestTimestamp) {
-                    oldestTimestamp = timestamp;
-                    oldestKey = entry.getKey();
+        try {
+            // 1단계: 자기 윈도우가 이미 완전히 만료된 키부터 제거해 유효한 긴 윈도우 기록을 보존한다.
+            for (Map.Entry<String, Bucket> entry : requests.entrySet()) {
+                Bucket bucket = entry.getValue();
+                if (bucket.expiresAt <= now) {
+                    requests.computeIfPresent(entry.getKey(), (ignored, current) -> {
+                        synchronized (current) {
+                            return current.expiresAt <= now ? null : current;
+                        }
+                    });
                 }
             }
-            if (oldestKey == null) {
-                return;
+
+            // 2단계: 만료 정리 후에도 상한을 넘으면 최근 활동 시각(LRU)이 가장 오래된 키부터 제거한다.
+            while (requests.size() > MAX_KEYS) {
+                String lruKey = null;
+                Bucket lruBucket = null;
+                long oldestActivity = Long.MAX_VALUE;
+                for (Map.Entry<String, Bucket> entry : requests.entrySet()) {
+                    Bucket bucket = entry.getValue();
+                    long activity = bucket.lastActivityAt;
+                    if (activity < oldestActivity) {
+                        oldestActivity = activity;
+                        lruKey = entry.getKey();
+                        lruBucket = bucket;
+                    }
+                }
+                if (lruKey == null) {
+                    return;
+                }
+                requests.remove(lruKey, lruBucket);
             }
-            requests.remove(oldestKey);
+        } finally {
+            evicting.set(false);
         }
+    }
+
+    private static final class Bucket {
+        private final Deque<Long> timestamps = new ArrayDeque<>();
+        private volatile long lastActivityAt;
+        private volatile long expiresAt;
     }
 }

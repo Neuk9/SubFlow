@@ -26,8 +26,9 @@ import java.util.List;
 /**
  * 경로별 슬라이딩 윈도우 요청 제한을 적용한다.
  *
- * <p>인증 사용자는 이메일, 비인증 요청은 클라이언트 IP를 키로 사용한다.
- * 규칙에 매칭되지 않는 요청에도 IP 기준 전체 안전판을 적용한다.
+ * <p>IP 기준 규칙과 전체 안전판({@link Phase#PRE_AUTH})은 {@code CsrfFilter}·OAuth2 필터
+ * 앞에서 실행되어 로그인 리다이렉트·콜백·CSRF 거부 폭주를 먼저 차단한다.
+ * 사용자 이메일 기준 규칙({@link Phase#POST_AUTH})은 인증 필터 뒤에서 실행된다.
  * 한도를 넘으면 429와 {@code Retry-After}(초)를 포함한 JSON을 반환한다.</p>
  */
 @Slf4j
@@ -44,7 +45,13 @@ public class RequestThrottleFilter extends OncePerRequestFilter {
     private static final Rule SAFETY_NET =
             new Rule("global", null, null, KeyType.IP, 1_000, ONE_MINUTE);
 
-    private static final List<Rule> RULES = List.of(
+    private static final List<Rule> IP_RULES = List.of(
+            new Rule("google-login", null, "/oauth2/authorization/google", KeyType.IP, 20, ONE_MINUTE),
+            new Rule("oauth2-callback", null, "/login/oauth2/**", KeyType.IP, 30, ONE_MINUTE),
+            new Rule("login-page", null, "/login", KeyType.IP, 20, ONE_MINUTE)
+    );
+
+    private static final List<Rule> USER_RULES = List.of(
             new Rule("import-preview", "POST", "/api/imports/preview", KeyType.USER, 10, ONE_MINUTE),
             new Rule("import-confirm", "POST", "/api/imports/confirm", KeyType.USER, 10, ONE_MINUTE),
             new Rule("data-export", "GET", "/api/me/data", KeyType.USER, 3, ONE_MINUTE),
@@ -53,12 +60,11 @@ public class RequestThrottleFilter extends OncePerRequestFilter {
             new Rule("share-reinvite", "POST", "/api/shares/*/reinvite", KeyType.USER, 20, ONE_HOUR),
             new Rule("share-accept", "POST", "/api/shares/*/accept", KeyType.USER, 30, ONE_MINUTE),
             new Rule("share-decline", "POST", "/api/shares/*/decline", KeyType.USER, 30, ONE_MINUTE),
-            new Rule("google-login", null, "/oauth2/authorization/google", KeyType.IP, 20, ONE_MINUTE),
-            new Rule("login-page", null, "/login", KeyType.IP, 20, ONE_MINUTE),
             new Rule("api-default", null, API_GLOB, KeyType.USER, 300, ONE_MINUTE)
     );
 
     private final boolean enabled;
+    private final Phase phase;
     private final SlidingWindowLimiter limiter;
     private final SlidingWindowLimiter auditLimiter;
     private final ClientIpResolver clientIpResolver;
@@ -73,13 +79,53 @@ public class RequestThrottleFilter extends OncePerRequestFilter {
                                  CurrentUserProvider currentUserProvider,
                                  ObjectMapper objectMapper,
                                  AuditService auditService) {
+        this(enabled, Phase.ALL, limiter, auditLimiter, clientIpResolver,
+                currentUserProvider, objectMapper, auditService);
+    }
+
+    private RequestThrottleFilter(boolean enabled,
+                                  Phase phase,
+                                  SlidingWindowLimiter limiter,
+                                  SlidingWindowLimiter auditLimiter,
+                                  ClientIpResolver clientIpResolver,
+                                  CurrentUserProvider currentUserProvider,
+                                  ObjectMapper objectMapper,
+                                  AuditService auditService) {
         this.enabled = enabled;
+        this.phase = phase;
         this.limiter = limiter;
         this.auditLimiter = auditLimiter;
         this.clientIpResolver = clientIpResolver;
         this.currentUserProvider = currentUserProvider;
         this.objectMapper = objectMapper;
         this.auditService = auditService;
+    }
+
+    public static RequestThrottleFilter preAuth(boolean enabled,
+                                                SlidingWindowLimiter limiter,
+                                                SlidingWindowLimiter auditLimiter,
+                                                ClientIpResolver clientIpResolver,
+                                                CurrentUserProvider currentUserProvider,
+                                                ObjectMapper objectMapper,
+                                                AuditService auditService) {
+        return new RequestThrottleFilter(enabled, Phase.PRE_AUTH, limiter, auditLimiter, clientIpResolver,
+                currentUserProvider, objectMapper, auditService);
+    }
+
+    public static RequestThrottleFilter postAuth(boolean enabled,
+                                                 SlidingWindowLimiter limiter,
+                                                 SlidingWindowLimiter auditLimiter,
+                                                 ClientIpResolver clientIpResolver,
+                                                 CurrentUserProvider currentUserProvider,
+                                                 ObjectMapper objectMapper,
+                                                 AuditService auditService) {
+        return new RequestThrottleFilter(enabled, Phase.POST_AUTH, limiter, auditLimiter, clientIpResolver,
+                currentUserProvider, objectMapper, auditService);
+    }
+
+    @Override
+    protected String getAlreadyFilteredAttributeName() {
+        return super.getAlreadyFilteredAttributeName() + "." + phase.name();
     }
 
     @Override
@@ -95,7 +141,7 @@ public class RequestThrottleFilter extends OncePerRequestFilter {
         if (rule != null && !tryAcquire(rule, request, response)) {
             return;
         }
-        if (!tryAcquire(SAFETY_NET, request, response)) {
+        if (phase != Phase.POST_AUTH && !tryAcquire(SAFETY_NET, request, response)) {
             return;
         }
         filterChain.doFilter(request, response);
@@ -107,7 +153,21 @@ public class RequestThrottleFilter extends OncePerRequestFilter {
         if (path == null) {
             return null;
         }
-        for (Rule rule : RULES) {
+        if (phase == Phase.PRE_AUTH) {
+            return matchFirst(IP_RULES, method, path);
+        }
+        if (phase == Phase.POST_AUTH) {
+            return matchFirst(USER_RULES, method, path);
+        }
+        Rule userRule = matchFirst(USER_RULES, method, path);
+        if (userRule != null) {
+            return userRule;
+        }
+        return matchFirst(IP_RULES, method, path);
+    }
+
+    private Rule matchFirst(List<Rule> rules, String method, String path) {
+        for (Rule rule : rules) {
             if (rule.matches(method, path)) {
                 return rule;
             }
@@ -175,6 +235,12 @@ public class RequestThrottleFilter extends OncePerRequestFilter {
         } catch (RuntimeException e) {
             log.warn("요청 제한 감사 기록을 남기지 못했습니다: {}", e.getClass().getSimpleName());
         }
+    }
+
+    enum Phase {
+        ALL,
+        PRE_AUTH,
+        POST_AUTH
     }
 
     private enum KeyType {

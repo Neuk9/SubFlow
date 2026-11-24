@@ -79,7 +79,7 @@ public class OriginVerifierFilter extends OncePerRequestFilter {
         return normalized != null && allowedOrigins.contains(normalized);
     }
 
-    private String normalizeOrigin(String value) {
+    static String normalizeOrigin(String value) {
         if (value == null || value.isBlank()) {
             return null;
         }

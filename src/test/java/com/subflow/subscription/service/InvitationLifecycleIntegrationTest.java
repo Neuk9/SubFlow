@@ -85,6 +85,12 @@ class InvitationLifecycleIntegrationTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.INVITATION_EXPIRED);
+        // 배치 실행 전에도 만료된 초대는 멤버 화면에서 숨겨지고 소유자 조회에는 EXPIRED로 표시된다.
+        assertThat(shareService.getSharedWithMe("2026-11")).isEmpty();
+
+        authenticateAs("local@subflow.dev");
+        assertThat(shareService.getShares(id, "2026-11").get(0).status())
+                .isEqualTo(ShareStatus.EXPIRED);
     }
 
     @Test

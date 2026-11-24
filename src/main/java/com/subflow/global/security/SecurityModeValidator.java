@@ -87,6 +87,12 @@ public class SecurityModeValidator implements InitializingBean {
         if (securityProperties.allowedOrigins().isEmpty()) {
             throw new IllegalStateException("subflow.security.allowed-origins 가 비어 있습니다.");
         }
+        for (String origin : securityProperties.allowedOrigins()) {
+            if (OriginVerifierFilter.normalizeOrigin(origin) == null) {
+                throw new IllegalStateException(
+                        "subflow.security.allowed-origins 에 올바르지 않은 출처가 포함되어 있습니다: " + origin);
+            }
+        }
 
         if (!StringUtils.hasText(securityProperties.auditHashPepper())) {
             throw new IllegalStateException("subflow.security.audit-hash-pepper 가 비어 있습니다.");

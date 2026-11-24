@@ -1,5 +1,7 @@
 package com.subflow.global.audit;
 
+import com.subflow.user.domain.User;
+import com.subflow.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +24,9 @@ class AuditServiceTest {
 
     @Autowired
     private AuditRepository auditRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Test
     @DisplayName("감사 기록은 원문 이메일 대신 pepper가 적용된 해시를 저장한다")
@@ -76,5 +81,21 @@ class AuditServiceTest {
 
         AuditEvent event = auditRepository.findAll().get(0);
         assertThat(event.getDetail()).hasSize(500);
+    }
+
+    @Test
+    @DisplayName("대문자가 섞인 이메일로 저장된 사용자도 actorUserId를 정상 해석한다")
+    void resolvesActorUserIdIgnoringEmailCase() {
+        User saved = userRepository.save(User.builder()
+                .googleSub("google-case-test")
+                .email("Alice@Example.com")
+                .name("앨리스")
+                .build());
+
+        auditService.record(AuditEventType.LOGIN_SUCCESS, AuditOutcome.SUCCESS,
+                "Alice@Example.com", "user", saved.getId(), "oauth2");
+
+        AuditEvent event = auditRepository.findAll().get(0);
+        assertThat(event.getActorUserId()).isEqualTo(saved.getId());
     }
 }

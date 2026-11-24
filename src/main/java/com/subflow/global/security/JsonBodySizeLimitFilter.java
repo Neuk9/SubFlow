@@ -169,6 +169,7 @@ public class JsonBodySizeLimitFilter extends OncePerRequestFilter {
 
         @Override
         public int read() throws IOException {
+            checkLimit();
             int value = delegate.read();
             if (value != -1) {
                 count++;
@@ -179,6 +180,7 @@ public class JsonBodySizeLimitFilter extends OncePerRequestFilter {
 
         @Override
         public int read(byte[] b, int off, int len) throws IOException {
+            checkLimit();
             if (len == 0) {
                 return 0;
             }

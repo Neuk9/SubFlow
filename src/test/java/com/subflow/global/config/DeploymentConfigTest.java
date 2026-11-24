@@ -24,6 +24,12 @@ class DeploymentConfigTest {
         String yaml = Files.readString(Path.of("src/main/resources/application-prod.yml"));
         assertThat(yaml).doesNotContain("address: 127.0.0.1");
         assertThat(yaml).contains("mode: oauth");
+        assertThat(yaml).contains("forward-headers-strategy: native");
+        assertThat(yaml).doesNotContain("forward-headers-strategy: framework");
+        assertThat(yaml).contains("protocol-header: X-Forwarded-Proto");
+        assertThat(yaml).contains("remote-ip-header: CF-Connecting-IP");
+        assertThat(yaml).contains("host-header: \"\"");
+        assertThat(yaml).contains("port-header: \"\"");
     }
 
     @Test
@@ -35,6 +41,10 @@ class DeploymentConfigTest {
         assertThat(compose).contains("max-size: \"10m\"");
         assertThat(compose).contains("max-file: \"3\"");
         assertThat(compose.split("max-size: \"10m\"", -1)).hasSize(3);
+
+        String dockerfile = Files.readString(Path.of("Dockerfile"));
+        assertThat(dockerfile).contains("mkdir -p /uploads");
+        assertThat(dockerfile).contains("chown 1000:1000 /uploads");
 
         String yaml = Files.readString(Path.of("src/main/resources/application-prod.yml"));
         assertThat(yaml).contains("location: /uploads");

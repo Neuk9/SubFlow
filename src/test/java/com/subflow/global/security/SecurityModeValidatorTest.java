@@ -66,6 +66,11 @@ class SecurityModeValidatorTest {
 
         var blankOrigins = validator(AuthMode.OAUTH, List.of(), "pepper", true, env, true);
         assertThatThrownBy(blankOrigins::afterPropertiesSet).isInstanceOf(IllegalStateException.class);
+
+        var invalidOrigin = validator(AuthMode.OAUTH, List.of("subflow.stda.app"), "pepper", true, env, true);
+        assertThatThrownBy(invalidOrigin::afterPropertiesSet)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("allowed-origins");
     }
 
     @Test

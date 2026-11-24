@@ -187,10 +187,13 @@ public class SubscriptionShareService {
 
     public List<MemberShareResponse> getSharedWithMe(String email, String period) {
         String resolvedPeriod = resolvePeriod(period);
+        LocalDateTime now = LocalDateTime.now(clock);
         List<SubscriptionShare> shares = shareRepository
                 .findAllByMemberEmailIgnoreCaseOrderByIdAsc(email).stream()
-                .filter(share -> share.getStatus() == ShareStatus.PENDING
-                        || share.getStatus() == ShareStatus.ACTIVE)
+                .filter(share -> {
+                    ShareStatus status = effectiveStatus(share, now);
+                    return status == ShareStatus.PENDING || status == ShareStatus.ACTIVE;
+                })
                 .filter(share -> share.getSubscription().getStatus() != SubscriptionStatus.CANCELED)
                 .toList();
         Map<Long, SettlementRecord> records = recordsByShareId(shares, resolvedPeriod);
@@ -200,7 +203,7 @@ public class SubscriptionShareService {
                         share.getSubscription().getId(),
                         share.getSubscription().getServiceName(),
                         share.getShareAmount(),
-                        share.getStatus(),
+                        effectiveStatus(share, now),
                         isMemberPaid(records.get(share.getId())),
                         memberPaidAt(records.get(share.getId())),
                         isSettled(records.get(share.getId())),
@@ -325,10 +328,14 @@ public class SubscriptionShareService {
                 isSettled(record),
                 record == null ? null : record.getSettledAt(),
                 share.getMemberEmail(),
-                share.getStatus(),
+                effectiveStatus(share, LocalDateTime.now(clock)),
                 isMemberPaid(record),
                 memberPaidAt(record),
                 share.getExpiresAt());
+    }
+
+    private ShareStatus effectiveStatus(SubscriptionShare share, LocalDateTime now) {
+        return share.isExpired(now) ? ShareStatus.EXPIRED : share.getStatus();
     }
 
     private String resolvePeriod(String period) {

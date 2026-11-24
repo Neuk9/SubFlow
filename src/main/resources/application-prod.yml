@@ -1,5 +1,12 @@
 server:
-  forward-headers-strategy: framework
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      protocol-header: X-Forwarded-Proto
+      remote-ip-header: CF-Connecting-IP
+      # 클라이언트 위조 가능한 X-Forwarded-Host / X-Forwarded-Port 는 신뢰하지 않는다.
+      host-header: ""
+      port-header: ""
   servlet:
     session:
       cookie:

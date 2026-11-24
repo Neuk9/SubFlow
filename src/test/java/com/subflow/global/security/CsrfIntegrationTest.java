@@ -39,15 +39,29 @@ class CsrfIntegrationTest {
     private AuditRepository auditRepository;
 
     @Test
-    @DisplayName("CSRF 토큰 없는 POST 요청은 403으로 거부되고 CSRF_REJECTED 감사를 남긴다")
+    @DisplayName("CSRF 토큰 없는 POST 요청은 403으로 거부되고 같은 IP의 반복 거부는 분당 1회만 감사를 남긴다")
     void rejectsPostWithoutCsrfToken() throws Exception {
         long before = countCsrfRejections();
 
         mockMvc.perform(post("/api/subscriptions")
+                        .with(req -> {
+                            req.setRemoteAddr("198.51.100.30");
+                            return req;
+                        })
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(REQUEST_BODY))
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+
+        mockMvc.perform(post("/api/subscriptions")
+                        .with(req -> {
+                            req.setRemoteAddr("198.51.100.30");
+                            return req;
+                        })
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(REQUEST_BODY))
+                .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
 
         assertThat(countCsrfRejections()).isEqualTo(before + 1);

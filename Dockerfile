@@ -18,7 +18,9 @@ FROM eclipse-temurin:21-jre
 # Temurin JRE 이미지에 기본 제공되는 ubuntu(1000) 계정을 제거하고 전용 계정을 만든다.
 RUN userdel --remove ubuntu \
     && groupadd --gid 1000 subflow \
-    && useradd --uid 1000 --gid 1000 --no-create-home --shell /usr/sbin/nologin subflow
+    && useradd --uid 1000 --gid 1000 --no-create-home --shell /usr/sbin/nologin subflow \
+    && mkdir -p /uploads \
+    && chown 1000:1000 /uploads
 
 WORKDIR /app
 COPY --from=build /workspace/build/libs/*.jar app.jar

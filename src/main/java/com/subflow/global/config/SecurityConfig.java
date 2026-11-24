@@ -26,6 +26,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
@@ -97,19 +98,35 @@ public class SecurityConfig {
             headers.cacheControl(cache -> cache.disable());
         });
 
+        ClientIpResolver clientIpResolver = new ClientIpResolver(securityProperties.trustCloudflareHeaders());
+        SlidingWindowLimiter requestLimiter = new SlidingWindowLimiter(clock);
+        SlidingWindowLimiter auditLimiter = new SlidingWindowLimiter(clock);
+
         List<String> publicPaths = new ArrayList<>(List.of(SecurityPaths.PUBLIC_PATHS));
         if (mode == AuthMode.DEMO) {
             publicPaths.add("/h2-console/**");
-            http.addFilterBefore(new DemoAuthenticationFilter(), AnonymousAuthenticationFilter.class);
+            // SecurityContextHolderFilter 직후 주입해 NoStoreFilter·POST_AUTH 제한기가 동일 인증 상태를 본다.
+            http.addFilterAfter(new DemoAuthenticationFilter(), SecurityContextHolderFilter.class);
         }
-        http.addFilterAfter(new NoStoreFilter(), AnonymousAuthenticationFilter.class);
-        // demo 인증 주입 후 실행되어 인증 사용자를 이메일 키로 식별한다.
-        http.addFilterAfter(
-                new RequestThrottleFilter(
+        // OAuth2 리다이렉트·콜백·로그아웃·CSRF 거부 응답에도 적용되도록 CsrfFilter 앞에 둔다.
+        http.addFilterBefore(new NoStoreFilter(), CsrfFilter.class);
+        http.addFilterBefore(
+                RequestThrottleFilter.preAuth(
                         securityProperties.rateLimit().enabled(),
-                        new SlidingWindowLimiter(clock),
-                        new SlidingWindowLimiter(clock),
-                        new ClientIpResolver(securityProperties.trustCloudflareHeaders()),
+                        requestLimiter,
+                        auditLimiter,
+                        clientIpResolver,
+                        currentUserProvider,
+                        objectMapper,
+                        auditService),
+                CsrfFilter.class);
+        // 인증 컨텍스트 확정 후 사용자 이메일 기준 API 제한을 적용한다.
+        http.addFilterAfter(
+                RequestThrottleFilter.postAuth(
+                        securityProperties.rateLimit().enabled(),
+                        requestLimiter,
+                        auditLimiter,
+                        clientIpResolver,
                         currentUserProvider,
                         objectMapper,
                         auditService),
@@ -123,7 +140,7 @@ public class SecurityConfig {
                         new ApiAuthenticationEntryPoint(objectMapper),
                         apiRequestMatcher)
                 .defaultAccessDeniedHandlerFor(
-                        new ApiAccessDeniedHandler(objectMapper, auditService),
+                        new ApiAccessDeniedHandler(objectMapper, auditService, auditLimiter, clientIpResolver),
                         apiRequestMatcher));
 
         if (mode == AuthMode.OAUTH) {

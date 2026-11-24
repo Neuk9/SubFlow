@@ -14,7 +14,7 @@ import java.io.IOException;
 import java.util.List;
 
 /**
- * API 응답과 인증된 HTML 응답에 {@code Cache-Control: no-store}를 설정한다.
+ * API 응답, OAuth2/로그아웃 흐름, 인증된 HTML 응답에 {@code Cache-Control: no-store}를 설정한다.
  * CSS·JS·이미지 같은 정적 자원은 캐시를 허용하기 위해 제외한다.
  */
 public class NoStoreFilter extends OncePerRequestFilter {
@@ -37,7 +37,11 @@ public class NoStoreFilter extends OncePerRequestFilter {
         if (isStaticAsset(path)) {
             return false;
         }
-        return path.startsWith("/api/") || isAuthenticated();
+        return path.startsWith("/api/")
+                || path.startsWith("/oauth2/")
+                || path.startsWith("/login/oauth2/")
+                || "/logout".equals(path)
+                || isAuthenticated();
     }
 
     private String pathWithinApplication(HttpServletRequest request) {

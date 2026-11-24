@@ -76,4 +76,27 @@ class SlidingWindowLimiterTest {
         // 1분 요청으로 인한 정리가 1시간 키의 기록을 초기화하면 안 된다.
         assertThat(limiter.tryAcquire("hourly", 3, oneHour)).isFalse();
     }
+
+    @Test
+    @DisplayName("상한 초과 시 최근에도 재시도 중인 활성 차단 키보다 유휴 키를 먼저 축출한다")
+    void evictsIdleKeyBeforeActivelyThrottledKey() {
+        Duration oneHour = Duration.ofHours(1);
+        assertThat(limiter.tryAcquire("attacker", 2, oneHour)).isTrue();
+        assertThat(limiter.tryAcquire("attacker", 2, oneHour)).isTrue();
+
+        // 유휴 키들을 채운다.
+        for (int i = 0; i < SlidingWindowLimiter.MAX_KEYS - 1; i++) {
+            clock.plus(Duration.ofMillis(1));
+            assertThat(limiter.tryAcquire("idle-" + i, 1, oneHour)).isTrue();
+        }
+
+        // 공격자는 계속 거부되며 최근 활동 시각이 갱신된다.
+        clock.plus(Duration.ofSeconds(10));
+        assertThat(limiter.tryAcquire("attacker", 2, oneHour)).isFalse();
+
+        // 상한을 넘기는 신규 키 유입 시 유휴 키가 축출되고 공격자 차단은 유지되어야 한다.
+        clock.plus(Duration.ofMillis(1));
+        assertThat(limiter.tryAcquire("overflow-key", 1, oneHour)).isTrue();
+        assertThat(limiter.tryAcquire("attacker", 2, oneHour)).isFalse();
+    }
 }

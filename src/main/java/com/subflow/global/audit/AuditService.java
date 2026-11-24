@@ -69,7 +69,7 @@ public class AuditService {
         if (email == null) {
             return null;
         }
-        return userRepository.findByEmail(email)
+        return userRepository.findByEmailIgnoreCase(email)
                 .map(User::getId)
                 .orElse(null);
     }

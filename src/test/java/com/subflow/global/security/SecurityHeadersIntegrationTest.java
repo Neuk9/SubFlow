@@ -23,7 +23,9 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 
 /**
@@ -83,6 +85,15 @@ class SecurityHeadersIntegrationTest {
     @DisplayName("API 응답은 캐시하지 않는다")
     void apiResponsesAreNotStored() throws Exception {
         mockMvc.perform(get("/api/services"))
+                .andExpect(header().string("Cache-Control", containsString("no-store")));
+    }
+
+    @Test
+    @DisplayName("OAuth2 로그인 시작과 로그아웃 응답은 캐시하지 않는다")
+    void oauthAndLogoutResponsesAreNotStored() throws Exception {
+        mockMvc.perform(get("/oauth2/authorization/google"))
+                .andExpect(header().string("Cache-Control", containsString("no-store")));
+        mockMvc.perform(post("/logout").with(csrf()))
                 .andExpect(header().string("Cache-Control", containsString("no-store")));
     }
 

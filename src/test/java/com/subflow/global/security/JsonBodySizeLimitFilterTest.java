@@ -145,6 +145,27 @@ class JsonBodySizeLimitFilterTest {
         assertThat(response.getBody().getCode()).isEqualTo("REQUEST_TOO_LARGE");
     }
 
+    @Test
+    @DisplayName("제한을 넘긴 뒤 입력 스트림을 다시 읽어도 0을 반환하지 않고 예외를 던진다")
+    void repeatedReadAfterExceedingLimitContinuesThrowing() throws Exception {
+        JsonBodySizeLimitFilter smallLimitFilter = new JsonBodySizeLimitFilter(4);
+        MockHttpServletRequest request = chunkedRequest("/api/imports/confirm", new byte[10]);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        smallLimitFilter.doFilter(request, response, (req, res) -> {
+            var stream = req.getInputStream();
+            byte[] buf = new byte[16];
+            try {
+                stream.read(buf, 0, buf.length);
+            } catch (JsonBodySizeLimitFilter.BodyTooLargeException expected) {
+                // 두 번째 읽기에서도 BodyTooLargeException이 유지되어야 한다.
+                stream.read(buf, 0, buf.length);
+            }
+        });
+
+        assertThat(response.getStatus()).isEqualTo(413);
+    }
+
     private MockHttpServletRequest jsonRequest(String uri, byte[] content) {
         return jsonRequest(uri, MediaType.APPLICATION_JSON_VALUE, content);
     }

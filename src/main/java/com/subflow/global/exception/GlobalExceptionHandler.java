@@ -7,6 +7,7 @@ import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -21,6 +22,8 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+
+import java.util.stream.Collectors;
 
 @Slf4j
 @RestControllerAdvice
@@ -39,7 +42,7 @@ public class GlobalExceptionHandler {
         ErrorCode errorCode = causedBy(e, JsonBodySizeLimitFilter.BodyTooLargeException.class)
                 ? ErrorCode.REQUEST_TOO_LARGE
                 : ErrorCode.INVALID_INPUT_VALUE;
-        logClientError("HttpMessageNotReadableException", errorCode, e.getMessage());
+        logClientError("HttpMessageNotReadableException", errorCode, "cause=" + rootCauseName(e));
         return ResponseEntity.status(errorCode.getStatus())
                 .body(ErrorResponse.of(errorCode));
     }
@@ -53,7 +56,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValidException(MethodArgumentNotValidException e) {
-        logClientError("MethodArgumentNotValidException", ErrorCode.INVALID_INPUT_VALUE, e.getMessage());
+        String fields = e.getBindingResult().getFieldErrors().stream()
+                .map(FieldError::getField)
+                .distinct()
+                .collect(Collectors.joining(","));
+        logClientError("MethodArgumentNotValidException", ErrorCode.INVALID_INPUT_VALUE,
+                "fields=" + fields + " count=" + e.getBindingResult().getErrorCount());
         return ResponseEntity.status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
                 .body(ErrorResponse.of(ErrorCode.INVALID_INPUT_VALUE, e.getBindingResult()));
     }
@@ -161,5 +169,13 @@ public class GlobalExceptionHandler {
             current = current.getCause();
         }
         return false;
+    }
+
+    private String rootCauseName(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null && current.getCause() != current) {
+            current = current.getCause();
+        }
+        return current.getClass().getSimpleName();
     }
 }
