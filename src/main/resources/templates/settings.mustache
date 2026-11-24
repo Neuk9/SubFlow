@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="dark">
+    <meta name="_csrf" content="{{_csrf.token}}">
+    <meta name="_csrf_header" content="{{_csrf.headerName}}">
     <title>SubFlow - 설정</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
     <link rel="stylesheet" href="/css/app.css?v=20261125r">
@@ -15,6 +17,7 @@
         <div class="sf-settings-actions">
             {{#authEnabled}}
             <form method="post" action="/logout">
+                <input type="hidden" name="_csrf" value="{{_csrf.token}}">
                 <button type="submit" class="sf-btn sf-btn-ghost sf-btn-sm">로그아웃</button>
             </form>
             {{/authEnabled}}
@@ -63,6 +66,7 @@
     <div class="sf-error d-none" id="settingsError" role="alert"></div>
 </main>
 
+<script src="/js/http.js?v=20261125r"></script>
 <script src="/js/settings.js?v=20261125r"></script>
 </body>
 </html>

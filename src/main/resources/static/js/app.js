@@ -25,7 +25,7 @@ let searchTerm = '';
 
 async function loadServiceCatalog() {
     try {
-        const res = await fetch('/api/services');
+        const res = await subflowFetch('/api/services');
         if (!res.ok) return;
         serviceCatalog = await res.json();
     } catch (e) {
@@ -243,7 +243,7 @@ async function updatePreview() {
     if (startDate) url += `&startDate=${startDate}`;
 
     try {
-        const res = await fetch(url);
+        const res = await subflowFetch(url);
         if (seq !== previewSeq) return;
         if (!res.ok) return;
 
@@ -294,7 +294,7 @@ async function submitSubscription() {
     };
 
     try {
-        const res = await fetch('/api/subscriptions', {
+        const res = await subflowFetch('/api/subscriptions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -324,7 +324,7 @@ async function deleteSubscription(button) {
     if (!confirm('정말 이 구독을 삭제하시겠습니까?')) return;
 
     try {
-        const res = await fetch(`/api/subscriptions/${id}`, { method: 'DELETE' });
+        const res = await subflowFetch(`/api/subscriptions/${id}`, { method: 'DELETE' });
         if (res.ok) {
             showToast('구독이 삭제되었습니다.', 'secondary');
             setTimeout(() => location.reload(), 500);
@@ -387,7 +387,7 @@ async function submitCancel() {
     const submitBtn = document.getElementById('cancelSubmitBtn');
     submitBtn.disabled = true;
     try {
-        const res = await fetch(`/api/subscriptions/${id}/cancel`, {
+        const res = await subflowFetch(`/api/subscriptions/${id}/cancel`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(scheduled ? { scheduledDate: date } : {})
@@ -426,7 +426,7 @@ function showToast(message, variant = 'primary') {
 
 async function triggerBatch(type) {
     try {
-        const res = await fetch(`/api/simulation/${type}`, { method: 'POST' });
+        const res = await subflowFetch(`/api/simulation/${type}`, { method: 'POST' });
         const data = await res.json();
         showToast(data.message || '배치를 실행했습니다.', res.ok ? 'info' : 'danger');
         if (res.ok) {
@@ -442,15 +442,6 @@ async function triggerBatch(type) {
    Activity log
    -------------------------------------------------------------------------- */
 
-function escapeHtml(value) {
-    return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
 function extractErrorMessage(error, fallback) {
     if (error && Array.isArray(error.errors) && error.errors.length > 0 && error.errors[0].reason) {
         return error.errors[0].reason;
@@ -463,8 +454,8 @@ async function loadLogs() {
     if (!container) return;
     try {
         const [notifRes, recordRes] = await Promise.all([
-            fetch('/api/simulation/notifications'),
-            fetch('/api/simulation/records')
+            subflowFetch('/api/simulation/notifications'),
+            subflowFetch('/api/simulation/records')
         ]);
         if (!notifRes.ok || !recordRes.ok) {
             return;
@@ -530,7 +521,7 @@ async function loadCalendar() {
 
     let events = [];
     try {
-        const res = await fetch(`/api/subscriptions/calendar?year=${calYear}&month=${calMonth}`);
+        const res = await subflowFetch(`/api/subscriptions/calendar?year=${calYear}&month=${calMonth}`);
         if (res.ok) events = await res.json();
     } catch (e) {
         console.error(e);
@@ -630,7 +621,7 @@ function formatWon(value) {
 
 async function loadShared() {
     try {
-        const res = await fetch(`/api/shares/shared?period=${currentPeriod()}`);
+        const res = await subflowFetch(`/api/shares/shared?period=${currentPeriod()}`);
         if (!res.ok) {
             throw new Error('공유 구독을 불러오지 못했습니다.');
         }
@@ -687,7 +678,7 @@ function renderActiveShares(shares) {
 
 async function acceptInvitation(shareId) {
     try {
-        const res = await fetch(`/api/shares/${shareId}/accept`, { method: 'POST' });
+        const res = await subflowFetch(`/api/shares/${shareId}/accept`, { method: 'POST' });
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
             showToast(extractErrorMessage(err, '초대를 수락하지 못했습니다.'), 'danger');
@@ -704,7 +695,7 @@ async function acceptInvitation(shareId) {
 async function declineInvitation(shareId) {
     if (!confirm('초대를 거절할까요?')) return;
     try {
-        const res = await fetch(`/api/shares/${shareId}/decline`, { method: 'POST' });
+        const res = await subflowFetch(`/api/shares/${shareId}/decline`, { method: 'POST' });
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
             showToast(extractErrorMessage(err, '초대를 거절하지 못했습니다.'), 'danger');
@@ -720,7 +711,7 @@ async function declineInvitation(shareId) {
 
 async function toggleMyPayment(shareId, paid) {
     try {
-        const res = await fetch(`/api/shares/${shareId}/payment`, {
+        const res = await subflowFetch(`/api/shares/${shareId}/payment`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ period: currentPeriod(), paid })
@@ -774,7 +765,7 @@ async function renderInsights() {
     if (!savingsBox || !duplicatesBox) return;
 
     try {
-        const res = await fetch('/api/insights');
+        const res = await subflowFetch('/api/insights');
         if (!res.ok) {
             throw new Error('인사이트를 불러오지 못했습니다.');
         }
@@ -901,7 +892,7 @@ function openShareModal(button) {
 async function loadShares() {
     if (!shareState.subscriptionId) return;
     try {
-        const res = await fetch(`/api/subscriptions/${shareState.subscriptionId}/shares?period=${shareState.period}`);
+        const res = await subflowFetch(`/api/subscriptions/${shareState.subscriptionId}/shares?period=${shareState.period}`);
         if (!res.ok) {
             throw new Error('공유 멤버를 불러오지 못했습니다.');
         }
@@ -975,7 +966,7 @@ async function addShare(event) {
     document.getElementById('shareError').classList.add('d-none');
 
     try {
-        const res = await fetch(`/api/subscriptions/${shareState.subscriptionId}/shares`, {
+        const res = await subflowFetch(`/api/subscriptions/${shareState.subscriptionId}/shares`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ memberName, shareAmount: Number(shareAmount), memberEmail: memberEmail || null })
@@ -997,7 +988,7 @@ async function addShare(event) {
 async function toggleShareSettle(shareId, settled) {
     document.getElementById('shareError').classList.add('d-none');
     try {
-        const res = await fetch(`/api/shares/${shareId}/settlement`, {
+        const res = await subflowFetch(`/api/shares/${shareId}/settlement`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ period: shareState.period, settled })
@@ -1017,7 +1008,7 @@ async function removeShare(shareId) {
     if (!confirm('이 멤버를 삭제할까요?')) return;
     document.getElementById('shareError').classList.add('d-none');
     try {
-        const res = await fetch(`/api/shares/${shareId}`, { method: 'DELETE' });
+        const res = await subflowFetch(`/api/shares/${shareId}`, { method: 'DELETE' });
         if (!res.ok) {
             const error = await res.json().catch(() => ({}));
             showShareError(extractErrorMessage(error, '멤버를 삭제하지 못했습니다.'));
@@ -1044,8 +1035,8 @@ if (window.Chart) {
 async function renderCharts() {
     try {
         const [summaryRes, subsRes] = await Promise.all([
-            fetch('/api/subscriptions/summary'),
-            fetch('/api/subscriptions?status=ACTIVE')
+            subflowFetch('/api/subscriptions/summary'),
+            subflowFetch('/api/subscriptions?status=ACTIVE')
         ]);
         const summary = await summaryRes.json();
         const subscriptions = await subsRes.json();
@@ -1260,7 +1251,7 @@ async function previewImport(useMapping = false) {
 
     setImportLoading(true);
     try {
-        const res = await fetch('/api/imports/preview', { method: 'POST', body: form });
+        const res = await subflowFetch('/api/imports/preview', { method: 'POST', body: form });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(extractErrorMessage(data, '파일을 분석하지 못했습니다.'));
         importState.preview = data;
@@ -1422,7 +1413,7 @@ async function confirmImport() {
     confirmButton.disabled = true;
     confirmButton.textContent = '적용 중…';
     try {
-        const res = await fetch('/api/imports/confirm', {
+        const res = await subflowFetch('/api/imports/confirm', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ records, newSubscriptions })

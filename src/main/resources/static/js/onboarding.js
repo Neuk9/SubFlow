@@ -37,7 +37,7 @@ function extractErrorMessage(error, fallback) {
 }
 
 function loadProfile() {
-    fetch('/api/me')
+    subflowFetch('/api/me')
         .then(res => res.ok ? res.json() : null)
         .then(profile => {
             if (!profile) return;
@@ -135,7 +135,7 @@ async function submitOnboarding(event) {
     button.textContent = '저장 중…';
 
     try {
-        const res = await fetch(endpoint, {
+        const res = await subflowFetch(endpoint, {
             method,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
