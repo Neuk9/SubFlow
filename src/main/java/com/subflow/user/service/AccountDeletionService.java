@@ -1,5 +1,8 @@
 package com.subflow.user.service;
 
+import com.subflow.global.audit.AuditEventType;
+import com.subflow.global.audit.AuditOutcome;
+import com.subflow.global.audit.AuditService;
 import com.subflow.global.exception.BusinessException;
 import com.subflow.global.exception.ErrorCode;
 import com.subflow.subscription.domain.SettlementRecord;
@@ -33,11 +36,14 @@ public class AccountDeletionService {
     private final NotificationHistoryRepository notificationHistoryRepository;
     private final SubscriptionShareRepository shareRepository;
     private final SettlementRecordRepository settlementRepository;
+    private final AuditService auditService;
 
     @Transactional
     public void deleteAccount(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        auditService.record(AuditEventType.ACCOUNT_DELETED, AuditOutcome.SUCCESS,
+                email, "user", user.getId(), "self");
 
         List<Subscription> subscriptions = subscriptionRepository
                 .findAllByOwnerEmailOrderByNextBillingDateAsc(email);

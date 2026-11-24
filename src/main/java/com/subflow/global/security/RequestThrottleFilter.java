@@ -1,5 +1,8 @@
 package com.subflow.global.security;
 
+import com.subflow.global.audit.AuditEventType;
+import com.subflow.global.audit.AuditOutcome;
+import com.subflow.global.audit.AuditService;
 import com.subflow.global.auth.CurrentUserProvider;
 import com.subflow.global.exception.ErrorCode;
 import com.subflow.global.exception.ErrorResponse;
@@ -7,6 +10,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -26,6 +30,7 @@ import java.util.List;
  * 규칙에 매칭되지 않는 요청에도 IP 기준 전체 안전판을 적용한다.
  * 한도를 넘으면 429와 {@code Retry-After}(초)를 포함한 JSON을 반환한다.</p>
  */
+@Slf4j
 public class RequestThrottleFilter extends OncePerRequestFilter {
 
     private static final Duration ONE_MINUTE = Duration.ofMinutes(1);
@@ -58,17 +63,20 @@ public class RequestThrottleFilter extends OncePerRequestFilter {
     private final ClientIpResolver clientIpResolver;
     private final CurrentUserProvider currentUserProvider;
     private final ObjectMapper objectMapper;
+    private final AuditService auditService;
 
     public RequestThrottleFilter(boolean enabled,
                                  SlidingWindowLimiter limiter,
                                  ClientIpResolver clientIpResolver,
                                  CurrentUserProvider currentUserProvider,
-                                 ObjectMapper objectMapper) {
+                                 ObjectMapper objectMapper,
+                                 AuditService auditService) {
         this.enabled = enabled;
         this.limiter = limiter;
         this.clientIpResolver = clientIpResolver;
         this.currentUserProvider = currentUserProvider;
         this.objectMapper = objectMapper;
+        this.auditService = auditService;
     }
 
     @Override
@@ -110,7 +118,7 @@ public class RequestThrottleFilter extends OncePerRequestFilter {
         if (limiter.tryAcquire(key, rule.limit(), rule.window())) {
             return true;
         }
-        reject(response, limiter.retryAfterSeconds(key, rule.window()));
+        reject(rule, response, limiter.retryAfterSeconds(key, rule.window()));
         return false;
     }
 
@@ -141,11 +149,21 @@ public class RequestThrottleFilter extends OncePerRequestFilter {
         return clientIpResolver.resolve(request);
     }
 
-    private void reject(HttpServletResponse response, long retryAfterSeconds) throws IOException {
+    private void reject(Rule rule, HttpServletResponse response, long retryAfterSeconds) throws IOException {
+        recordRateLimited(rule);
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfterSeconds));
         response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=" + StandardCharsets.UTF_8.name());
         objectMapper.writeValue(response.getWriter(), ErrorResponse.of(ErrorCode.TOO_MANY_REQUESTS));
+    }
+
+    private void recordRateLimited(Rule rule) {
+        try {
+            auditService.record(AuditEventType.RATE_LIMITED, AuditOutcome.DENIED,
+                    currentUserEmail(), null, null, rule.name());
+        } catch (RuntimeException e) {
+            log.warn("요청 제한 감사 기록을 남기지 못했습니다: {}", e.getClass().getSimpleName());
+        }
     }
 
     private enum KeyType {

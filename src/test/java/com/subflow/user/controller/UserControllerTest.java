@@ -1,5 +1,6 @@
 package com.subflow.user.controller;
 
+import com.subflow.global.audit.AuditService;
 import com.subflow.global.auth.CurrentUserProvider;
 import com.subflow.global.exception.GlobalExceptionHandler;
 import com.subflow.subscription.domain.Category;
@@ -57,6 +58,9 @@ class UserControllerTest {
 
     @Mock
     private CurrentUserProvider currentUserProvider;
+
+    @Mock
+    private AuditService auditService;
 
     @InjectMocks
     private UserController userController;

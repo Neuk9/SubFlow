@@ -1,5 +1,6 @@
 package com.subflow.subscription.service;
 
+import com.subflow.global.audit.AuditService;
 import com.subflow.global.exception.BusinessException;
 import com.subflow.global.exception.ErrorCode;
 import com.subflow.subscription.domain.BillingCycle;
@@ -54,6 +55,9 @@ class SubscriptionShareServiceTest {
 
     @Mock
     private SubscriptionFinder subscriptionFinder;
+
+    @Mock
+    private AuditService auditService;
 
     @Spy
     private Clock clock = Clock.systemDefaultZone();

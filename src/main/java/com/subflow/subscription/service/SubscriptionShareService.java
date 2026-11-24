@@ -1,5 +1,8 @@
 package com.subflow.subscription.service;
 
+import com.subflow.global.audit.AuditEventType;
+import com.subflow.global.audit.AuditOutcome;
+import com.subflow.global.audit.AuditService;
 import com.subflow.global.exception.BusinessException;
 import com.subflow.global.exception.ErrorCode;
 import com.subflow.subscription.domain.SettlementRecord;
@@ -43,6 +46,7 @@ public class SubscriptionShareService {
     private final SubscriptionShareRepository shareRepository;
     private final SettlementRecordRepository settlementRepository;
     private final SubscriptionFinder subscriptionFinder;
+    private final AuditService auditService;
     private final Clock clock;
 
     public List<ShareResponse> getShares(Long subscriptionId, String period) {
@@ -82,6 +86,9 @@ public class SubscriptionShareService {
                 .invitedAt(memberEmail == null ? null : now)
                 .expiresAt(memberEmail == null ? null : now.plusDays(INVITATION_VALID_DAYS))
                 .build());
+        auditService.record(AuditEventType.SHARE_INVITED, AuditOutcome.SUCCESS,
+                subscription.getOwnerEmail(), "share", saved.getId(),
+                memberEmail == null ? "direct" : "invite");
         return toResponse(saved, null);
     }
 
@@ -99,6 +106,8 @@ public class SubscriptionShareService {
             throw new BusinessException(ErrorCode.INVALID_SHARE_STATUS);
         }
         share.accept(now);
+        auditService.record(AuditEventType.SHARE_ACCEPTED, AuditOutcome.SUCCESS,
+                share.getMemberEmail(), "share", share.getId(), null);
     }
 
     @Transactional
@@ -112,6 +121,8 @@ public class SubscriptionShareService {
             throw new BusinessException(ErrorCode.INVALID_SHARE_STATUS);
         }
         share.decline(now);
+        auditService.record(AuditEventType.SHARE_DECLINED, AuditOutcome.SUCCESS,
+                share.getMemberEmail(), "share", share.getId(), null);
     }
 
     @Transactional
@@ -128,6 +139,8 @@ public class SubscriptionShareService {
             throw new BusinessException(ErrorCode.INVALID_SHARE_STATUS);
         }
         share.reinvite(now);
+        auditService.record(AuditEventType.SHARE_INVITED, AuditOutcome.SUCCESS,
+                share.getSubscription().getOwnerEmail(), "share", share.getId(), "reinvite");
     }
 
     @Transactional
@@ -164,6 +177,8 @@ public class SubscriptionShareService {
             record.cancelPaid();
         }
         settlementRepository.save(record);
+        auditService.record(AuditEventType.PAYMENT_MARKED, AuditOutcome.SUCCESS,
+                share.getMemberEmail(), "share", shareId, request.period());
     }
 
     public List<MemberShareResponse> getSharedWithMe(String period) {
@@ -197,6 +212,8 @@ public class SubscriptionShareService {
     @Transactional
     public void removeShare(Long shareId) {
         SubscriptionShare share = findOwnedShare(shareId);
+        auditService.record(AuditEventType.SHARE_REMOVED, AuditOutcome.SUCCESS,
+                share.getSubscription().getOwnerEmail(), "share", shareId, "remove");
         settlementRepository.deleteAllByShareId(shareId);
         shareRepository.delete(share);
     }
@@ -222,6 +239,8 @@ public class SubscriptionShareService {
             record.unsettle();
         }
         settlementRepository.save(record);
+        auditService.record(AuditEventType.SETTLEMENT_UPDATED, AuditOutcome.SUCCESS,
+                share.getSubscription().getOwnerEmail(), "share", shareId, request.period());
     }
 
     public ShareSummaryResponse getSummary(String period) {

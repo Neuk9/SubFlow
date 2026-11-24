@@ -1,5 +1,6 @@
 package com.subflow.user.service;
 
+import com.subflow.global.audit.AuditService;
 import com.subflow.global.auth.OAuthUserInfo;
 import com.subflow.user.domain.User;
 import com.subflow.user.repository.UserConsentRepository;
@@ -30,6 +31,9 @@ class UserServiceTest {
 
     @Mock
     private UserConsentRepository consentRepository;
+
+    @Mock
+    private AuditService auditService;
 
     @Spy
     private Clock clock = Clock.systemDefaultZone();

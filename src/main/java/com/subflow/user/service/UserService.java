@@ -1,5 +1,8 @@
 package com.subflow.user.service;
 
+import com.subflow.global.audit.AuditEventType;
+import com.subflow.global.audit.AuditOutcome;
+import com.subflow.global.audit.AuditService;
 import com.subflow.global.auth.OAuthUserInfo;
 import com.subflow.global.exception.BusinessException;
 import com.subflow.global.exception.ErrorCode;
@@ -32,6 +35,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final UserConsentRepository userConsentRepository;
+    private final AuditService auditService;
     private final Clock clock;
 
     @Transactional
@@ -98,6 +102,8 @@ public class UserService {
         recordConsent(user, ConsentType.PRIVACY, ConsentVersions.PRIVACY, agreedPrivacy, now);
         recordConsent(user, ConsentType.TERMS, ConsentVersions.TERMS, agreedTerms, now);
         recordConsent(user, ConsentType.MARKETING, ConsentVersions.MARKETING, agreedMarketing, now);
+        auditService.record(AuditEventType.ONBOARDING_COMPLETED, AuditOutcome.SUCCESS,
+                email, "user", user.getId(), null);
         return toProfile(user);
     }
 
@@ -119,6 +125,8 @@ public class UserService {
                 ? ConsentVersions.MARKETING
                 : ConsentVersions.NOTIFICATION;
         recordConsent(user, request.type(), version, request.agreed(), LocalDateTime.now(clock));
+        auditService.record(AuditEventType.CONSENT_CHANGED, AuditOutcome.SUCCESS,
+                email, "user", user.getId(), request.type().name());
         return toProfile(user);
     }
 

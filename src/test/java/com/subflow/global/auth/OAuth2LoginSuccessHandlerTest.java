@@ -1,5 +1,6 @@
 package com.subflow.global.auth;
 
+import com.subflow.global.audit.AuditService;
 import com.subflow.subscription.domain.Category;
 import com.subflow.user.domain.Occupation;
 import com.subflow.user.domain.User;
@@ -30,6 +31,9 @@ class OAuth2LoginSuccessHandlerTest {
 
     @Mock
     private UserService userService;
+
+    @Mock
+    private AuditService auditService;
 
     @InjectMocks
     private OAuth2LoginSuccessHandler handler;

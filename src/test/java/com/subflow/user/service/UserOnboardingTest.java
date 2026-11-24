@@ -1,5 +1,6 @@
 package com.subflow.user.service;
 
+import com.subflow.global.audit.AuditService;
 import com.subflow.global.exception.BusinessException;
 import com.subflow.global.exception.ErrorCode;
 import com.subflow.subscription.domain.Category;
@@ -45,6 +46,9 @@ class UserOnboardingTest {
 
     @Mock
     private UserConsentRepository consentRepository;
+
+    @Mock
+    private AuditService auditService;
 
     @Spy
     private Clock clock = Clock.fixed(Instant.parse("2026-11-24T00:00:00Z"), ZoneOffset.UTC);

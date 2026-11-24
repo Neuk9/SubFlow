@@ -1,5 +1,8 @@
 package com.subflow.global.auth;
 
+import com.subflow.global.audit.AuditEventType;
+import com.subflow.global.audit.AuditOutcome;
+import com.subflow.global.audit.AuditService;
 import com.subflow.user.domain.User;
 import com.subflow.user.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,6 +20,7 @@ import java.io.IOException;
 public class OAuth2LoginSuccessHandler extends SavedRequestAwareAuthenticationSuccessHandler {
 
     private final UserService userService;
+    private final AuditService auditService;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request, HttpServletResponse response,
@@ -24,10 +28,11 @@ public class OAuth2LoginSuccessHandler extends SavedRequestAwareAuthenticationSu
         String target = "/";
         if (authentication.getPrincipal() instanceof OAuth2User oAuth2User) {
             String email = oAuth2User.getAttribute("email");
-            boolean onboardingCompleted = userService.findByEmail(email)
-                    .map(User::isOnboardingCompleted)
-                    .orElse(false);
+            User user = userService.findByEmail(email).orElse(null);
+            boolean onboardingCompleted = user != null && user.isOnboardingCompleted();
             target = onboardingCompleted ? "/" : "/onboarding";
+            auditService.record(AuditEventType.LOGIN_SUCCESS, AuditOutcome.SUCCESS,
+                    email, "user", user == null ? null : user.getId(), "oauth2");
         }
         response.sendRedirect(target);
     }

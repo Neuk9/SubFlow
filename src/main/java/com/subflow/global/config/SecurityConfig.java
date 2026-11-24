@@ -3,7 +3,9 @@ package com.subflow.global.config;
 import com.subflow.global.auth.CurrentUserProvider;
 import com.subflow.global.auth.CustomOAuth2UserService;
 import com.subflow.global.auth.CustomOidcUserService;
+import com.subflow.global.auth.OAuth2LoginFailureHandler;
 import com.subflow.global.auth.OAuth2LoginSuccessHandler;
+import com.subflow.global.audit.AuditService;
 import com.subflow.global.logging.NoStoreFilter;
 import com.subflow.global.security.ApiAccessDeniedHandler;
 import com.subflow.global.security.ApiAuthenticationEntryPoint;
@@ -53,7 +55,9 @@ public class SecurityConfig {
             CustomOAuth2UserService customOAuth2UserService,
             CustomOidcUserService customOidcUserService,
             OAuth2LoginSuccessHandler oauth2LoginSuccessHandler,
+            OAuth2LoginFailureHandler oauth2LoginFailureHandler,
             CurrentUserProvider currentUserProvider,
+            AuditService auditService,
             Clock clock) throws Exception {
 
         AuthMode mode = authProperties.mode();
@@ -106,7 +110,8 @@ public class SecurityConfig {
                         new SlidingWindowLimiter(clock),
                         new ClientIpResolver(securityProperties.trustCloudflareHeaders()),
                         currentUserProvider,
-                        objectMapper),
+                        objectMapper,
+                        auditService),
                 AnonymousAuthenticationFilter.class);
 
         http.authorizeHttpRequests(auth -> auth
@@ -117,7 +122,7 @@ public class SecurityConfig {
                         new ApiAuthenticationEntryPoint(objectMapper),
                         apiRequestMatcher)
                 .defaultAccessDeniedHandlerFor(
-                        new ApiAccessDeniedHandler(objectMapper),
+                        new ApiAccessDeniedHandler(objectMapper, auditService),
                         apiRequestMatcher));
 
         if (mode == AuthMode.OAUTH) {
@@ -126,6 +131,7 @@ public class SecurityConfig {
                     .userInfoEndpoint(userInfo -> userInfo
                             .userService(customOAuth2UserService)
                             .oidcUserService(customOidcUserService))
+                    .failureHandler(oauth2LoginFailureHandler)
                     .successHandler(oauth2LoginSuccessHandler));
             http.logout(logout -> logout.logoutSuccessUrl("/login"));
         }
