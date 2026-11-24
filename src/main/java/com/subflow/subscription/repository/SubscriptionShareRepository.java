@@ -12,4 +12,6 @@ public interface SubscriptionShareRepository extends JpaRepository<SubscriptionS
     List<SubscriptionShare> findAllBySubscriptionOwnerEmailOrderByIdAsc(String ownerEmail);
 
     boolean existsBySubscriptionIdAndMemberNameIgnoreCase(Long subscriptionId, String memberName);
+
+    void deleteAllBySubscriptionId(Long subscriptionId);
 }

@@ -11,6 +11,10 @@ import com.subflow.subscription.repository.SettlementRecordRepository;
 import com.subflow.subscription.repository.SubscriptionRepository;
 import com.subflow.subscription.repository.SubscriptionShareRepository;
 import com.subflow.subscription.service.SubscriptionCommandService;
+import com.subflow.user.domain.Membership;
+import com.subflow.user.domain.Occupation;
+import com.subflow.user.domain.User;
+import com.subflow.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
@@ -32,10 +36,12 @@ public class DemoDataInitializer implements CommandLineRunner {
     private final SubscriptionShareRepository shareRepository;
     private final SettlementRecordRepository settlementRepository;
     private final SubscriptionCommandService subscriptionCommandService;
+    private final UserRepository userRepository;
     private final Clock clock;
 
     @Override
     public void run(String... args) {
+        createDemoUser();
         if (subscriptionRepository.count() > 0) {
             return;
         }
@@ -120,6 +126,22 @@ public class DemoDataInitializer implements CommandLineRunner {
         createShare(netflix.getId(), "지수", BigDecimal.valueOf(8500), false, today);
 
         log.info("시연용 샘플 데이터 6건과 공유 멤버 2건 등록 완료!");
+    }
+
+    private void createDemoUser() {
+        if (userRepository.findByEmail(com.subflow.global.auth.CurrentUserProvider.LOCAL_OWNER).isPresent()) {
+            return;
+        }
+        User user = User.builder()
+                .googleSub("local-demo")
+                .email(com.subflow.global.auth.CurrentUserProvider.LOCAL_OWNER)
+                .name("늑구")
+                .build();
+        user.completeOnboarding(2002, Occupation.UNIVERSITY, 3,
+                java.util.Set.of(Category.OTT, Category.MUSIC),
+                java.util.Set.of(Membership.SKT, Membership.SAMSUNG_CARD));
+        userRepository.save(user);
+        log.info("시연용 데모 사용자 생성 완료: {}", user.getEmail());
     }
 
     private void createShare(Long subscriptionId, String memberName, BigDecimal amount,

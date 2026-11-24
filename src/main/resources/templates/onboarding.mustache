@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <title>SubFlow - 시작하기</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+    <link rel="stylesheet" href="/css/app.css?v=20261125n">
+</head>
+<body class="sf-auth-body">
+<main class="sf-auth-card sf-auth-card-wide">
+    <h1 class="sf-auth-brand">SubFlow</h1>
+    <p class="sf-auth-lead">맞춤 절약 혜택을 찾기 위해 몇 가지만 알려주세요.</p>
+
+    <form id="onboardingForm" class="sf-onboarding" onsubmit="submitOnboarding(event)">
+        <section class="sf-field">
+            <label class="sf-field-label" for="birthYear">출생연도</label>
+            <input type="number" class="form-control" id="birthYear" min="1900" max="2026" required
+                   placeholder="예: 2002">
+            <p class="sf-field-hint">만 나이 기준 혜택을 찾는 데 사용합니다. 생일은 수집하지 않습니다.</p>
+        </section>
+
+        <section class="sf-field">
+            <span class="sf-field-label">현재 신분</span>
+            <div class="sf-chip-row" data-group="occupation">
+                {{#occupations}}
+                <button type="button" class="sf-chip-select" data-value="{{name}}">{{description}}</button>
+                {{/occupations}}
+            </div>
+        </section>
+
+        <section class="sf-field">
+            <label class="sf-field-label" for="householdSize">가구원 수</label>
+            <select class="form-select" id="householdSize">
+                <option value="">선택 안 함</option>
+                <option value="1">1명</option>
+                <option value="2">2명</option>
+                <option value="3">3명</option>
+                <option value="4">4명</option>
+                <option value="5">5명 이상</option>
+            </select>
+            <p class="sf-field-hint">가족 요금제나 1/N 분담 제안에 사용합니다.</p>
+        </section>
+
+        <section class="sf-field">
+            <span class="sf-field-label">관심 카테고리</span>
+            <div class="sf-chip-row" data-group="interests">
+                {{#categories}}
+                <button type="button" class="sf-chip-select" data-value="{{name}}">{{description}}</button>
+                {{/categories}}
+            </div>
+        </section>
+
+        <section class="sf-field">
+            <span class="sf-field-label">보유 멤버십</span>
+            <p class="sf-field-hint">통신사·카드·쇼핑 멤버십 할인과 겹치는 구독을 찾아드립니다.</p>
+            <div class="sf-chip-row" data-group="memberships">
+                {{#memberships}}
+                <button type="button" class="sf-chip-select" data-value="{{name}}">{{description}}</button>
+                {{/memberships}}
+            </div>
+        </section>
+
+        <section class="sf-field sf-consent">
+            <label class="sf-consent-row">
+                <input type="checkbox" id="agreePrivacy" class="form-check-input" required>
+                <span>[필수] <a href="/privacy" target="_blank">개인정보 수집·이용</a>에 동의합니다.</span>
+            </label>
+            <label class="sf-consent-row">
+                <input type="checkbox" id="agreeTerms" class="form-check-input" required>
+                <span>[필수] <a href="/terms" target="_blank">이용약관</a>에 동의합니다.</span>
+            </label>
+            <label class="sf-consent-row">
+                <input type="checkbox" id="agreeMarketing" class="form-check-input">
+                <span>[선택] 혜택·이벤트 알림 수신에 동의합니다.</span>
+            </label>
+        </section>
+
+        <div class="sf-error d-none" id="onboardingError" role="alert"></div>
+
+        <button type="submit" class="sf-btn sf-btn-primary sf-auth-submit" id="onboardingSubmit">시작하기</button>
+    </form>
+</main>
+
+<script src="/js/onboarding.js?v=20261125n"></script>
+</body>
+</html>
