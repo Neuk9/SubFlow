@@ -31,11 +31,22 @@ class PiiMaskerTest {
     }
 
     @Test
+    @DisplayName("이름은 첫 글자만 남기고 나머지를 별표로 가린다")
+    void masksNameAfterFirstCharacter() {
+        assertThat(PiiMasker.maskName("김서연")).isEqualTo("김**");
+        assertThat(PiiMasker.maskName("김")).isEqualTo("김");
+        assertThat(PiiMasker.maskName("John Doe")).isEqualTo("J*******");
+        assertThat(PiiMasker.maskName("😀민수")).isEqualTo("😀**");
+    }
+
+    @Test
     @DisplayName("null과 빈 문자열은 그대로 반환한다")
     void handlesNullAndEmpty() {
         assertThat(PiiMasker.maskEmail(null)).isNull();
         assertThat(PiiMasker.maskText(null)).isNull();
+        assertThat(PiiMasker.maskName(null)).isNull();
         assertThat(PiiMasker.maskEmail("")).isEmpty();
         assertThat(PiiMasker.maskText("")).isEmpty();
+        assertThat(PiiMasker.maskName("")).isEmpty();
     }
 }

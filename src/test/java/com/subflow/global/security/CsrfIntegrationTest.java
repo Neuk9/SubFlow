@@ -1,5 +1,7 @@
 package com.subflow.global.security;
 
+import com.subflow.global.audit.AuditEventType;
+import com.subflow.global.audit.AuditRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -9,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -32,15 +35,22 @@ class CsrfIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private AuditRepository auditRepository;
+
     @Test
-    @DisplayName("CSRF 토큰 없는 POST 요청은 403으로 거부된다")
+    @DisplayName("CSRF 토큰 없는 POST 요청은 403으로 거부되고 CSRF_REJECTED 감사를 남긴다")
     void rejectsPostWithoutCsrfToken() throws Exception {
+        long before = countCsrfRejections();
+
         mockMvc.perform(post("/api/subscriptions")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(REQUEST_BODY))
                 .andExpect(status().isForbidden())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+
+        assertThat(countCsrfRejections()).isEqualTo(before + 1);
     }
 
     @Test
@@ -63,6 +73,12 @@ class CsrfIntegrationTest {
                         .content(REQUEST_BODY))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ORIGIN_NOT_ALLOWED"));
+    }
+
+    private long countCsrfRejections() {
+        return auditRepository.findAll().stream()
+                .filter(event -> event.getEventType() == AuditEventType.CSRF_REJECTED)
+                .count();
     }
 
     @Test

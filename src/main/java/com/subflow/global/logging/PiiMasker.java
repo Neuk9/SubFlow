@@ -28,6 +28,15 @@ public final class PiiMasker {
         return email.charAt(0) + "***@" + email.substring(at + 1);
     }
 
+    public static String maskName(String name) {
+        if (name == null || name.isEmpty()) {
+            return name;
+        }
+        int firstEnd = name.offsetByCodePoints(0, 1);
+        int remaining = name.codePointCount(firstEnd, name.length());
+        return name.substring(0, firstEnd) + "*".repeat(remaining);
+    }
+
     public static String maskText(String text) {
         if (text == null || text.isEmpty()) {
             return text;

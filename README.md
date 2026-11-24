@@ -43,7 +43,7 @@
 
 - JDK 21
 
-PostgreSQL을 사용할 때만 Docker가 필요합니다. 기본값인 `local` 프로필은 H2 인메모리 DB를 사용하므로 Docker 없이 바로 실행됩니다.
+PostgreSQL을 사용할 때만 Docker가 필요합니다. 기본 프로필은 없으며 로컬 실행 시 `local` 프로필을 명시해야 합니다. `local`은 H2 인메모리 DB를 사용하므로 Docker 없이 바로 실행됩니다.
 
 ### 2. 저장소 클론
 
@@ -55,13 +55,15 @@ cd SubFlow
 
 `installHooks`는 커밋 메시지 컨벤션을 검사하는 Git 훅을 설치합니다. 자세한 내용은 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고해 주세요.
 
-### 3. 애플리케이션 실행 (H2)
+### 3. 애플리케이션 실행 (H2, local 프로필)
 
 ```bash
+SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
+# Gradle bootRun 태스크는 SPRING_PROFILES_ACTIVE 가 없으면 local 을 주입합니다.
 ./gradlew bootRun
 ```
 
-`http://localhost:8080`에서 확인할 수 있습니다. 기본 프로필은 `local`이며 다음이 자동 적용됩니다.
+`http://localhost:8080`에서 확인할 수 있습니다. `java -jar`로 직접 실행할 때는 프로필을 지정하지 않으면 기동에 실패하므로 `SPRING_PROFILES_ACTIVE`를 반드시 명시하세요. `local` 프로필에서는 다음이 적용됩니다.
 
 - H2 인메모리 DB (`jdbc:h2:mem:subflow-local`)
 - H2 콘솔: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:subflow-local`, 사용자 `sa`, 비밀번호 없음)
@@ -76,6 +78,20 @@ docker compose up -d
 
 저장소의 `docker-compose.yml`은 **로컬 개발 전용**입니다. PostgreSQL `5432` 포트를 호스트에 공개하고 `docker/initdb`를 마운트하므로 운영 배포에는 사용하지 않습니다.
 
+Compose의 PostgreSQL에 붙여 앱을 실행하려면 데이터소스 환경변수를 덮어씁니다.
+
+```bash
+docker compose up -d
+
+SPRING_PROFILES_ACTIVE=local \
+SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/subflow \
+DB_USERNAME=subflow \
+DB_PASSWORD=subflow \
+./gradlew bootRun
+```
+
+`local` 프로필에서도 Flyway 마이그레이션이 적용되고 Hibernate는 `validate`로 스키마를 검증합니다.
+
 ### 5. 운영 배포 (Docker Compose + Cloudflare Tunnel)
 
 ```bash
@@ -88,7 +104,8 @@ docker compose -f compose.prod.yml up -d --build
 - 앱은 `SPRING_PROFILES_ACTIVE=prod,oauth`로 기동하며, Google OAuth2 설정이 없으면 **기동에 실패**합니다.
 - 호스트 포트는 `127.0.0.1:${APP_PORT:-19007}:8080`으로 loopback에만 매핑됩니다.
 - PostgreSQL은 포트를 공개하지 않고 `internal` 네트워크로만 앱과 연결됩니다.
-- 앱 컨테이너는 non-root(UID 1000), `read_only`, `tmpfs /tmp`, `cap_drop: ALL`, `no-new-privileges`로 실행됩니다.
+- 앱 컨테이너는 non-root(UID 1000), `read_only`, `tmpfs /tmp`·`/uploads`, `cap_drop: ALL`, `no-new-privileges`로 실행됩니다.
+- Docker Compose **2.24 이상**이 필요합니다(`env_file.required`). 앱·DB 모두 healthcheck와 로그 로테이션(10MB × 3)이 설정되어 있습니다.
 
 Cloudflare Tunnel은 호스트의 loopback 포트로 연결합니다.
 
@@ -104,13 +121,32 @@ ingress:
 
 `subflow.stda.app`은 Cloudflare 엣지에서 TLS가 종료되고 `http://localhost:19007`로 전달됩니다. 방화벽에서 19007 외부 접근을 차단하고 `.env` 권한을 `600`으로 유지하세요.
 
-### 6. 테스트
+### 6. 운영 체크리스트
+
+배포 전후 아래 항목을 확인합니다.
+
+- **프로필**: `SPRING_PROFILES_ACTIVE`를 반드시 명시합니다(운영은 `prod,oauth`). 프로필 없는 기동은 `SecurityModeValidator`에서 실패합니다.
+- **Compose 버전**: Docker Compose 2.24 이상이 필요합니다(`env_file.required`). 앱·DB healthcheck와 로그 로테이션(10MB × 3)이 설정되어 있으므로 `docker compose ps`에서 healthy 상태를 확인하세요.
+- **감사 로그 권한**: 앱 런타임 DB 계정에는 `audit_events`의 `INSERT`/`SELECT`/`DELETE`만 부여하고 `UPDATE`·DDL 권한은 주지 않습니다. 365일 보존 배치는 1,000건 단위 트랜잭션으로 커밋합니다(`AuditRetentionJob`).
+- **감사 해시 pepper**: `AUDIT_HASH_PEPPER`는 임의의 긴 값으로 설정하고 예시값(`change-me-in-production`)을 사용하지 않습니다.
+- **백업**: DB 백업은 저장 시 암호화하고 보존 기간을 개인정보 처리방침과 일치시킵니다. 보존 기간이 지난 백업은 정해진 주기로 파기하고 파기 기록을 남깁니다.
+- **Cloudflare**:
+  - SSL/TLS 모드 Full (strict) + **Always Use HTTPS**
+  - HSTS `max-age=31536000; includeSubDomains`
+  - 최소 TLS 1.2
+  - `/api/*`와 인증된 HTML 응답은 캐시 우회(`NoStoreFilter`가 `no-store` 설정)
+  - WAF·rate limit은 보조 수단으로만 사용하고 앱의 rate limit을 우선
+- **cloudflared**: 전용 비루트 사용자로 실행하고 credentials 파일 권한은 `600`, systemd unit에 `NoNewPrivileges=true`를 설정합니다.
+- **비밀값**: `.env` 권한은 `600`으로 유지하고 커밋하지 않습니다. `DB_PASSWORD`가 비어 있으면 `compose.prod.yml`의 `:?` 검사로 기동이 중단됩니다.
+- **로컬 demo Origin**: demo 모드의 `allowed-origins`에는 `http://localhost:19007`(Compose loopback 포트)이 포함되어 있습니다. 다른 포트를 쓰면 `application-local.yml`/`application-test.yml`에 추가하세요.
+
+### 7. 테스트
 
 ```bash
 ./gradlew test
 ```
 
-테스트는 `test` 프로필을 사용하며 H2 인메모리 DB에서 실행됩니다. 별도 DB 실행이 필요 없습니다.
+테스트는 `test` 프로필을 사용하며 H2 인메모리 DB에서 실행됩니다. 실제 PostgreSQL에 Flyway를 적용한 뒤 Hibernate `validate`를 확인하는 `PostgresSchemaValidationTest`는 `CI=true`일 때만 실행되며 GitHub Actions의 Postgres 서비스에 연결됩니다. 로컬에 PostgreSQL이 있으면 `CI=true ./gradlew test --tests 'com.subflow.global.PostgresSchemaValidationTest'`로 실행할 수 있습니다.
 
 ## 데모 시나리오
 
@@ -208,13 +244,13 @@ GOOGLE_CLIENT_SECRET=...
 
 | 파일 | 용도 |
 | --- | --- |
-| `application.yml` | 공통 설정, 파일 업로드 제한. 기본 프로필은 `local` |
-| `application-local.yml` | H2 인메모리, H2 콘솔, 인증 생략, `create-drop` |
+| `application.yml` | 공통 설정, 파일 업로드 제한. 기본 프로필 없음(명시 필요) |
+| `application-local.yml` | H2 인메모리, H2 콘솔, 인증 생략, `validate` |
 | `application-prod.yml` | PostgreSQL, H2 콘솔 비활성, 인증 활성, `validate` |
 | `application-oauth.yml` | Google OAuth2 클라이언트 등록 |
 | `application-test.yml` (test) | H2 인메모리, Flyway 비활성, `create-drop` |
 
-프로필을 지정하지 않으면 `local`이 적용됩니다. 운영 배포에서는 `compose.prod.yml`이 `prod,oauth`를 지정하므로 반드시 `oauth` 프로필과 Google OAuth2 설정을 함께 준비하세요.
+프로필을 지정하지 않으면 기동에 실패합니다. 로컬은 `local`, 운영 배포는 `compose.prod.yml`이 지정하는 `prod,oauth`를 명시하세요. 운영에서는 반드시 `oauth` 프로필과 Google OAuth2 설정을 함께 준비해야 합니다.
 
 ## 프로필별 동작 차이
 

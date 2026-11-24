@@ -6,6 +6,9 @@ server:
         secure: true
 
 spring:
+  servlet:
+    multipart:
+      location: /uploads
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:subflow}
     username: ${DB_USERNAME:subflow}

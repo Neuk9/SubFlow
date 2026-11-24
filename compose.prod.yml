@@ -23,6 +23,19 @@ services:
     read_only: true
     tmpfs:
       - /tmp:size=128m,mode=1777
+      # 비루트(1000:1000) 사용자가 업로드 임시 파일을 쓸 수 있어야 한다.
+      - /uploads:size=64m,mode=0700,uid=1000,gid=1000
+    healthcheck:
+      # Temurin Ubuntu 이미지의 bash /dev/tcp 로 애플리케이션 포트를 확인한다.
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/8080'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -45,6 +58,10 @@ services:
       test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
       interval: 10s
       retries: 5
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - internal
     # 운영에서는 DB 포트를 호스트에 공개하지 않는다.

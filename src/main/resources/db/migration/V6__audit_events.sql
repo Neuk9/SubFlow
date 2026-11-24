@@ -6,10 +6,10 @@ CREATE TABLE audit_events (
     event_type      VARCHAR(40)  NOT NULL,
     outcome         VARCHAR(20)  NOT NULL,
     actor_user_id   BIGINT,
-    actor_email_hash CHAR(64),
+    actor_email_hash VARCHAR(64),
     target_type     VARCHAR(30),
     target_id       BIGINT,
-    ip_hash         CHAR(64),
+    ip_hash         VARCHAR(64),
     request_id      VARCHAR(36),
     detail          VARCHAR(500)
 );

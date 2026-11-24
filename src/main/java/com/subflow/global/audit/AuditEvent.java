@@ -42,7 +42,7 @@ public class AuditEvent {
     @Column(name = "actor_user_id")
     private Long actorUserId;
 
-    @Column(name = "actor_email_hash", length = 64, columnDefinition = "CHAR(64)")
+    @Column(name = "actor_email_hash", length = 64)
     private String actorEmailHash;
 
     @Column(name = "target_type", length = 30)
@@ -51,7 +51,7 @@ public class AuditEvent {
     @Column(name = "target_id")
     private Long targetId;
 
-    @Column(name = "ip_hash", length = 64, columnDefinition = "CHAR(64)")
+    @Column(name = "ip_hash", length = 64)
     private String ipHash;
 
     @Column(name = "request_id", length = 36)

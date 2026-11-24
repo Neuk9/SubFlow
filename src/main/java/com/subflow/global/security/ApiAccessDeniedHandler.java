@@ -12,7 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
-import org.springframework.security.web.csrf.InvalidCsrfTokenException;
+import org.springframework.security.web.csrf.CsrfException;
 import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
@@ -36,18 +36,18 @@ public class ApiAccessDeniedHandler implements AccessDeniedHandler {
     public void handle(HttpServletRequest request,
                        HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException {
-        if (accessDeniedException instanceof InvalidCsrfTokenException) {
-            recordCsrfRejection();
+        if (accessDeniedException instanceof CsrfException) {
+            recordCsrfRejection(accessDeniedException);
         }
         response.setStatus(HttpStatus.FORBIDDEN.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=" + StandardCharsets.UTF_8.name());
         objectMapper.writeValue(response.getWriter(), ErrorResponse.of(ErrorCode.FORBIDDEN));
     }
 
-    private void recordCsrfRejection() {
+    private void recordCsrfRejection(AccessDeniedException accessDeniedException) {
         try {
             auditService.record(AuditEventType.CSRF_REJECTED, AuditOutcome.DENIED,
-                    null, null, null, "invalid-csrf-token");
+                    null, null, null, accessDeniedException.getClass().getSimpleName());
         } catch (RuntimeException e) {
             log.warn("CSRF 거부 감사 기록을 남기지 못했습니다: {}", e.getClass().getSimpleName());
         }
