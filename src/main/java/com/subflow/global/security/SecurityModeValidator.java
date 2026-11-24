@@ -20,6 +20,7 @@ public class SecurityModeValidator implements InitializingBean {
 
     private static final List<String> DEMO_PROFILES = List.of("local", "test", "demo");
     private static final String GOOGLE_REGISTRATION_ID = "google";
+    private static final String EXAMPLE_AUDIT_HASH_PEPPER = "change-me-in-production";
 
     private final AuthProperties authProperties;
     private final SecurityProperties securityProperties;
@@ -89,6 +90,11 @@ public class SecurityModeValidator implements InitializingBean {
 
         if (!StringUtils.hasText(securityProperties.auditHashPepper())) {
             throw new IllegalStateException("subflow.security.audit-hash-pepper 가 비어 있습니다.");
+        }
+
+        if (EXAMPLE_AUDIT_HASH_PEPPER.equals(securityProperties.auditHashPepper().trim())) {
+            throw new IllegalStateException(
+                    "subflow.security.audit-hash-pepper 가 예시 값(change-me-in-production)입니다. 운영용 임의의 긴 값으로 교체하세요.");
         }
 
         if (environment.acceptsProfiles(Profiles.of("prod")) && !securityProperties.rateLimit().enabled()) {

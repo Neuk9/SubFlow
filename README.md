@@ -84,6 +84,7 @@ cp .env.example .env
 docker compose -f compose.prod.yml up -d --build
 ```
 
+- `.env`의 `DB_PASSWORD`와 `AUDIT_HASH_PEPPER`에는 기본값이 없습니다. 누락하거나 pepper를 예시값(`change-me-in-production`)으로 두면 **기동에 실패**합니다.
 - 앱은 `SPRING_PROFILES_ACTIVE=prod,oauth`로 기동하며, Google OAuth2 설정이 없으면 **기동에 실패**합니다.
 - 호스트 포트는 `127.0.0.1:${APP_PORT:-19007}:8080`으로 loopback에만 매핑됩니다.
 - PostgreSQL은 포트를 공개하지 않고 `internal` 네트워크로만 앱과 연결됩니다.

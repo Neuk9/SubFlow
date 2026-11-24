@@ -69,6 +69,16 @@ class SecurityModeValidatorTest {
     }
 
     @Test
+    void failsWhenOauthUsesExamplePepper() {
+        var env = new MockEnvironment().withProperty("spring.profiles.active", "prod,oauth");
+        var validator = validator(AuthMode.OAUTH, List.of("https://subflow.stda.app"),
+                "change-me-in-production", true, env, true);
+        assertThatThrownBy(validator::afterPropertiesSet)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("change-me-in-production");
+    }
+
+    @Test
     void failsWhenProdDisablesRateLimit() {
         var env = new MockEnvironment().withProperty("spring.profiles.active", "prod,oauth");
         var validator = validator(AuthMode.OAUTH, List.of("https://subflow.stda.app"), "pepper", false, env, true);

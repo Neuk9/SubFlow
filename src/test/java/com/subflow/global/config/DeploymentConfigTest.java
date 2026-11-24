@@ -25,4 +25,15 @@ class DeploymentConfigTest {
         assertThat(yaml).doesNotContain("address: 127.0.0.1");
         assertThat(yaml).contains("mode: oauth");
     }
+
+    @Test
+    void productionRequiresDbPasswordWithoutFallback() throws Exception {
+        String compose = Files.readString(Path.of("compose.prod.yml"));
+        assertThat(compose).contains("${DB_PASSWORD:?DB_PASSWORD is required}");
+        assertThat(compose).doesNotContain("DB_PASSWORD:-");
+
+        String yaml = Files.readString(Path.of("src/main/resources/application-prod.yml"));
+        assertThat(yaml).contains("password: ${DB_PASSWORD}");
+        assertThat(yaml).doesNotContain("${DB_PASSWORD:");
+    }
 }
