@@ -83,6 +83,38 @@ class SubscriptionSchedulerTest {
     }
 
     @Test
+    @DisplayName("이미 기록된 결제일은 중복 저장하지 않고 다음 결제일로 갱신한다")
+    void skipsAlreadyRecordedBilling() {
+        LocalDate today = LocalDate.now();
+        LocalDate nextCycle = today.plusMonths(1);
+
+        Subscription subscription = Subscription.builder()
+                .serviceName("넷플릭스")
+                .category(Category.OTT)
+                .fee(BigDecimal.valueOf(17000))
+                .billingCycle(BillingCycle.MONTHLY)
+                .billingDay(today.getDayOfMonth())
+                .startDate(today.minusMonths(1))
+                .nextBillingDate(today)
+                .monthlyExpense(BigDecimal.valueOf(17000))
+                .remindDaysBefore(3)
+                .build();
+
+        given(subscriptionRepository.findAllByStatusAndNextBillingDateLessThanEqual(eq(SubscriptionStatus.ACTIVE), any(LocalDate.class)))
+                .willReturn(List.of(subscription));
+        given(billingRecordRepository.existsBySubscriptionIdAndBillingDateAndAmount(any(), eq(today), any()))
+                .willReturn(true);
+        given(billingDateCalculator.calculateNextCycleDate(eq(BillingCycle.MONTHLY), eq(today), eq(today.getDayOfMonth())))
+                .willReturn(nextCycle);
+
+        int processed = subscriptionScheduler.processDueSubscriptions();
+
+        assertThat(processed).isZero();
+        verify(billingRecordRepository, never()).save(any(BillingRecord.class));
+        assertThat(subscription.getNextBillingDate()).isEqualTo(nextCycle);
+    }
+
+    @Test
     @DisplayName("결제 D-3일인 구독에 대해 결제 예정 알림이 생성된다")
     void sendUpcomingPaymentNotificationsCreatesHistory() {
         LocalDate today = LocalDate.now();
