@@ -15,7 +15,9 @@ RUN ./gradlew bootJar --no-daemon
 FROM eclipse-temurin:21-jre
 
 # 이미지도 non-root(UID/GID 1000)로 실행한다.
-RUN groupadd --gid 1000 subflow \
+# Temurin JRE 이미지에 기본 제공되는 ubuntu(1000) 계정을 제거하고 전용 계정을 만든다.
+RUN userdel --remove ubuntu \
+    && groupadd --gid 1000 subflow \
     && useradd --uid 1000 --gid 1000 --no-create-home --shell /usr/sbin/nologin subflow
 
 WORKDIR /app
