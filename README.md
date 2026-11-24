@@ -127,7 +127,7 @@ ingress:
 
 - **프로필**: `SPRING_PROFILES_ACTIVE`를 반드시 명시합니다(운영은 `prod,oauth`). 프로필 없는 기동은 `SecurityModeValidator`에서 실패합니다.
 - **Compose 버전**: Docker Compose 2.24 이상이 필요합니다(`env_file.required`). 앱·DB healthcheck와 로그 로테이션(10MB × 3)이 설정되어 있으므로 `docker compose ps`에서 healthy 상태를 확인하세요.
-- **감사 로그 권한**: 앱 런타임 DB 계정에는 `audit_events`의 `INSERT`/`SELECT`/`DELETE`만 부여하고 `UPDATE`·DDL 권한은 주지 않습니다. 365일 보존 배치는 1,000건 단위 트랜잭션으로 커밋합니다(`AuditRetentionJob`).
+- **DB 권한**: Flyway가 앱 기동 시 `SPRING_DATASOURCE_*` 계정으로 스키마를 적용하므로 해당 계정에는 마이그레이션용 DDL 권한이 필요합니다. 운영에서는 마이그레이션 전용 계정 분리를 권장합니다. 앱의 런타임 DML은 `audit_events`의 `INSERT`/`SELECT`/`DELETE`(보존 배치)로 제한하고 `UPDATE`는 주지 않습니다. 365일 보존 배치는 1,000건 단위 트랜잭션으로 커밋합니다(`AuditRetentionJob`).
 - **감사 해시 pepper**: `AUDIT_HASH_PEPPER`는 임의의 긴 값으로 설정하고 예시값(`change-me-in-production`)을 사용하지 않습니다.
 - **백업**: DB 백업은 저장 시 암호화하고 보존 기간을 개인정보 처리방침과 일치시킵니다. 보존 기간이 지난 백업은 정해진 주기로 파기하고 파기 기록을 남깁니다.
 - **Cloudflare**:
