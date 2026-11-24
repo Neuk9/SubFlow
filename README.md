@@ -65,27 +65,45 @@ cd SubFlow
 
 - H2 인메모리 DB (`jdbc:h2:mem:subflow-local`)
 - H2 콘솔: `http://localhost:8080/h2-console` (JDBC URL `jdbc:h2:mem:subflow-local`, 사용자 `sa`, 비밀번호 없음)
-- 로그인 생략 (모든 요청 허용)
+- 로그인 생략 (`local@subflow.dev` 데모 사용자 자동 인증)
 - 시연용 샘플 구독 6건과 공유 멤버 2건 (서버 재시작 시 초기화)
 
-### 4. PostgreSQL로 실행
+### 4. 로컬 PostgreSQL (개발용, 선택)
 
 ```bash
 docker compose up -d
-cp .env.example .env
-SPRING_PROFILES_ACTIVE=prod ./gradlew bootRun
 ```
 
-`application-prod.yml`은 `ddl-auto: validate`를 사용하므로 스키마가 미리 준비되어 있어야 합니다.
-Flyway 마이그레이션이 애플리케이션 시작 시 스키마를 적용합니다.
+저장소의 `docker-compose.yml`은 **로컬 개발 전용**입니다. PostgreSQL `5432` 포트를 호스트에 공개하고 `docker/initdb`를 마운트하므로 운영 배포에는 사용하지 않습니다.
 
-Google 로그인까지 켜려면 `oauth` 프로필을 함께 활성화합니다.
+### 5. 운영 배포 (Docker Compose + Cloudflare Tunnel)
 
 ```bash
-SPRING_PROFILES_ACTIVE=prod,oauth ./gradlew bootRun
+cp .env.example .env
+# .env에 GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, DB_PASSWORD, AUDIT_HASH_PEPPER 등 실제 값 입력
+docker compose -f compose.prod.yml up -d --build
 ```
 
-### 5. 테스트
+- 앱은 `SPRING_PROFILES_ACTIVE=prod,oauth`로 기동하며, Google OAuth2 설정이 없으면 **기동에 실패**합니다.
+- 호스트 포트는 `127.0.0.1:${APP_PORT:-19007}:8080`으로 loopback에만 매핑됩니다.
+- PostgreSQL은 포트를 공개하지 않고 `internal` 네트워크로만 앱과 연결됩니다.
+- 앱 컨테이너는 non-root(UID 1000), `read_only`, `tmpfs /tmp`, `cap_drop: ALL`, `no-new-privileges`로 실행됩니다.
+
+Cloudflare Tunnel은 호스트의 loopback 포트로 연결합니다.
+
+```yaml
+# cloudflared config
+tunnel: subflow
+credentials-file: /etc/cloudflared/<tunnel-id>.json
+ingress:
+  - hostname: subflow.stda.app
+    service: http://localhost:19007
+  - service: http_status:404
+```
+
+`subflow.stda.app`은 Cloudflare 엣지에서 TLS가 종료되고 `http://localhost:19007`로 전달됩니다. 방화벽에서 19007 외부 접근을 차단하고 `.env` 권한을 `600`으로 유지하세요.
+
+### 6. 테스트
 
 ```bash
 ./gradlew test
@@ -148,8 +166,7 @@ Flyway를 사용합니다. (`src/main/resources/db/migration`)
 | 프로필 | 동작 |
 | --- | --- |
 | `local` | 로그인 생략. `local@subflow.dev` 데모 사용자로 동작 |
-| `prod` | 인증 활성화. Google OAuth2 설정이 없으면 경고 후 인증만 비활성화 |
-| `prod,oauth` | Google 로그인 필수. `/login`에서 Google로 시작 |
+| `prod`, `prod,oauth` | Google 로그인 필수. OAuth2 설정이 없으면 기동 실패 |
 
 ### 로그인과 온보딩
 
@@ -174,7 +191,9 @@ Flyway를 사용합니다. (`src/main/resources/db/migration`)
 ### Google OAuth2 설정
 
 1. Google Cloud Console > API 및 서비스 > 사용자 인증 정보 > OAuth 2.0 클라이언트 ID 생성
-2. 승인된 리디렉션 URI 등록: `http://localhost:8080/login/oauth2/code/google`
+2. 승인된 리디렉션 URI 등록
+   - 로컬: `http://localhost:8080/login/oauth2/code/google`
+   - 운영: `https://subflow.stda.app/login/oauth2/code/google`
 3. `.env`에 값 입력
 
 ```bash
@@ -194,13 +213,13 @@ GOOGLE_CLIENT_SECRET=...
 | `application-oauth.yml` | Google OAuth2 클라이언트 등록 |
 | `application-test.yml` (test) | H2 인메모리, Flyway 비활성, `create-drop` |
 
-프로필을 지정하지 않으면 `local`이 적용되므로, 운영 배포 시에는 반드시 `SPRING_PROFILES_ACTIVE=prod`를 설정하세요.
+프로필을 지정하지 않으면 `local`이 적용됩니다. 운영 배포에서는 `compose.prod.yml`이 `prod,oauth`를 지정하므로 반드시 `oauth` 프로필과 Google OAuth2 설정을 함께 준비하세요.
 
 ## 프로필별 동작 차이
 
 | 기능 | local | prod | prod,oauth |
 | --- | --- | --- | --- |
-| 로그인 | 생략 | 생략 (경고) | Google 필수 |
+| 로그인 | 생략 | Google 필수 | Google 필수 |
 | H2 콘솔 (`/h2-console`) | 제공 | 차단 (404) | 차단 (404) |
 | 배치 시뮬레이션 (`/api/simulation/*`) | 제공 | 차단 (404) | 차단 (404) |
 | 샘플 데이터 | 자동 생성 | 생성하지 않음 | 생성하지 않음 |

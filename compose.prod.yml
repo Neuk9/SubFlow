@@ -1,0 +1,58 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: subflow:latest
+    container_name: subflow-app
+    restart: unless-stopped
+    user: "1000:1000"
+    ports:
+      # 호스트 loopback에만 노출한다. 외부 공개는 Cloudflare Tunnel이 담당한다.
+      - "127.0.0.1:${APP_PORT:-19007}:8080"
+    env_file:
+      # .env에 실제 비밀값을 둔다. 없으면 앱이 fail-closed로 기동을 거부한다.
+      - path: .env
+        required: false
+    environment:
+      SPRING_PROFILES_ACTIVE: prod,oauth
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME:-subflow}
+    depends_on:
+      db:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    networks:
+      - edge
+      - internal
+
+  db:
+    image: postgres:17-alpine
+    container_name: subflow-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-subflow}
+      POSTGRES_USER: ${DB_USERNAME:-subflow}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-subflow}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      retries: 5
+    networks:
+      - internal
+    # 운영에서는 DB 포트를 호스트에 공개하지 않는다.
+
+networks:
+  edge: {}          # app의 Google OAuth egress
+  internal:
+    internal: true  # db는 외부 egress 불가
+
+volumes:
+  pgdata: {}
