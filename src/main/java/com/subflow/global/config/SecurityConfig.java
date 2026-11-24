@@ -3,64 +3,61 @@ package com.subflow.global.config;
 import com.subflow.global.auth.CustomOAuth2UserService;
 import com.subflow.global.auth.CustomOidcUserService;
 import com.subflow.global.auth.OAuth2LoginSuccessHandler;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Value;
+import com.subflow.global.security.AuthMode;
+import com.subflow.global.security.AuthProperties;
+import com.subflow.global.security.DemoAuthenticationFilter;
+import com.subflow.global.security.SecurityPaths;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 
-@Slf4j
+import java.util.ArrayList;
+import java.util.List;
+
 @Configuration
 public class SecurityConfig {
-
-    private static final String[] PUBLIC_PATHS = {
-            "/css/**", "/js/**", "/images/**", "/favicon.ico", "/error",
-            "/login", "/privacy", "/terms", "/logos/**"
-    };
 
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
-            ObjectProvider<ClientRegistrationRepository> clientRegistrations,
-            @Value("${subflow.auth.enabled:false}") boolean authEnabled,
+            AuthProperties authProperties,
             CustomOAuth2UserService customOAuth2UserService,
             CustomOidcUserService customOidcUserService,
             OAuth2LoginSuccessHandler oauth2LoginSuccessHandler) throws Exception {
 
+        AuthMode mode = authProperties.mode();
+
         http.csrf(AbstractHttpConfigurer::disable);
 
-        boolean oauthConfigured = clientRegistrations.getIfAvailable() != null;
-
-        if (!authEnabled || !oauthConfigured) {
-            if (authEnabled) {
-                log.warn("인증이 요청되었지만 Google OAuth2 설정이 없어 인증을 비활성화합니다. "
-                        + "GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET 을 설정하고 'oauth' 프로필을 활성화하세요.");
-            }
+        List<String> publicPaths = new ArrayList<>(List.of(SecurityPaths.PUBLIC_PATHS));
+        if (mode == AuthMode.DEMO) {
+            publicPaths.add("/h2-console/**");
             http.headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()));
-            http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
-            return http.build();
+            http.addFilterBefore(new DemoAuthenticationFilter(), AnonymousAuthenticationFilter.class);
         }
 
         http.authorizeHttpRequests(auth -> auth
-                .requestMatchers(PUBLIC_PATHS).permitAll()
+                .requestMatchers(publicPaths.toArray(String[]::new)).permitAll()
                 .anyRequest().authenticated());
         http.exceptionHandling(exceptions -> exceptions
                 .defaultAuthenticationEntryPointFor(
                         new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
                         request -> request.getRequestURI().startsWith("/api/")));
-        http.oauth2Login(oauth -> oauth
-                .loginPage("/login")
-                .userInfoEndpoint(userInfo -> userInfo
-                        .userService(customOAuth2UserService)
-                        .oidcUserService(customOidcUserService))
-                .successHandler(oauth2LoginSuccessHandler));
-        http.logout(logout -> logout.logoutSuccessUrl("/login"));
+
+        if (mode == AuthMode.OAUTH) {
+            http.oauth2Login(oauth -> oauth
+                    .loginPage("/login")
+                    .userInfoEndpoint(userInfo -> userInfo
+                            .userService(customOAuth2UserService)
+                            .oidcUserService(customOidcUserService))
+                    .successHandler(oauth2LoginSuccessHandler));
+            http.logout(logout -> logout.logoutSuccessUrl("/login"));
+        }
 
         return http.build();
     }

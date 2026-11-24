@@ -47,6 +47,10 @@ tasks.named('test') {
 	useJUnitPlatform()
 }
 
+tasks.named('bootRun') {
+	environment 'SPRING_PROFILES_ACTIVE', System.getenv('SPRING_PROFILES_ACTIVE') ?: 'local'
+}
+
 // 협업 훅 설치: ./gradlew installHooks
 // 클론 후 한 번 실행하면 commit-msg 검사가 활성화됩니다.
 tasks.register('installHooks', Exec) {
