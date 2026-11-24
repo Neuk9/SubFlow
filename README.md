@@ -17,6 +17,8 @@
   - 같은 용도의 중복 구독 탐지 (음악, 클라우드, AI)
 - **해지 안내**: 서비스별 해지 경로와 링크
 - **공유 구독 정산**: 멤버별 분담 금액과 월 단위 정산 기록
+- **Google 로그인·온보딩**: Google 단일 로그인, 최초 로그인 시 맞춤 혜택용 정보 입력
+- **개인정보 보호**: 동의 기록, 개인정보 처리방침·이용약관, 회원 탈퇴
 - **배치 시뮬레이션**: 결제 갱신, 알림 발송, 만료 처리 (`local` 전용)
 
 ## 기술 스택
@@ -114,6 +116,7 @@ Flyway를 사용합니다. (`src/main/resources/db/migration`)
 | --- | --- |
 | `V1__init_schema.sql` | 구독, 결제 기록, 알림 이력 |
 | `V2__subscription_shares.sql` | 공유 구독 멤버, 월별 정산 기록 |
+| `V3__users.sql` | Google 사용자, 동의 기록 |
 
 ## API 요약
 
@@ -125,6 +128,8 @@ Flyway를 사용합니다. (`src/main/resources/db/migration`)
 | POST | `/api/imports/confirm` | CSV 가져오기 확정 |
 | GET | `/api/insights` | 절약 제안, 중복 구독 |
 | GET | `/api/services` | 서비스 카탈로그와 요금제 |
+| GET/PUT/DELETE | `/api/me` | 내 프로필 조회/수정/탈퇴 |
+| POST | `/api/me/onboarding` | 온보딩 제출 |
 | GET/POST | `/api/subscriptions/{id}/shares` | 공유 멤버 목록/추가 |
 | PUT | `/api/shares/{id}/settlement` | 월별 정산 완료 처리 |
 | GET | `/api/shares/summary` | 받은 금액/남은 금액 요약 |
@@ -133,9 +138,25 @@ Flyway를 사용합니다. (`src/main/resources/db/migration`)
 
 | 프로필 | 동작 |
 | --- | --- |
-| `local` | 로그인 생략. 모든 요청 허용 |
+| `local` | 로그인 생략. `local@subflow.dev` 데모 사용자로 동작 |
 | `prod` | 인증 활성화. Google OAuth2 설정이 없으면 경고 후 인증만 비활성화 |
-| `prod,oauth` | Google 로그인 필수. 미로그인 시 `/oauth2/authorization/google` 로 리다이렉트 |
+| `prod,oauth` | Google 로그인 필수. `/login`에서 Google로 시작 |
+
+### 로그인과 온보딩
+
+- Google 계정 하나로 가입과 로그인을 처리합니다.
+- 최초 로그인 시 `/onboarding`에서 아래 정보를 입력합니다.
+  - 필수: 출생연도, 현재 신분
+  - 선택: 가구원 수, 관심 카테고리, 보유 멤버십, 마케팅 수신 동의
+- 필수 동의(개인정보 수집·이용, 이용약관)가 없으면 온보딩을 완료할 수 없습니다.
+- 만 14세 미만은 가입할 수 없습니다.
+- 온보딩을 마치지 않으면 다른 화면 접근 시 `/onboarding`으로 이동합니다.
+
+### 개인정보와 탈퇴
+
+- `/privacy` 개인정보 처리방침, `/terms` 이용약관
+- 동의 기록은 종류·문서 버전·시각과 함께 저장합니다.
+- `DELETE /api/me`로 탈퇴하면 구독·결제·공유·정산·동의·사용자 데이터를 순서대로 파기합니다.
 
 소유자는 `subscriptions.owner_email` 로 구분합니다. 모든 조회·수정·삭제는 현재 로그인 사용자의 이메일로 제한됩니다.
 공유 구독 멤버와 정산 기록도 구독 소유자만 조회·변경할 수 있습니다.
@@ -179,7 +200,7 @@ GOOGLE_CLIENT_SECRET=...
 
 ```text
 src/main/java/com/subflow/
-  global/                 # 공통 설정, 예외, 인증, 데모 데이터
+  global/                 # 공통 설정, 예외, 인증, 페이지, 데모 데이터
   subscription/
     brand/                # 서비스명 → 브랜드 로고/색상 매핑
     catalog/              # 서비스·요금제 카탈로그 (연간/학생 요금, 해지 안내)
@@ -190,6 +211,7 @@ src/main/java/com/subflow/
     repository/
     scheduler/            # 결제 갱신, 알림, 만료 배치
     service/              # 구독, 가져오기, 인사이트, 공유 정산
+  user/                   # Google 사용자, 온보딩, 동의, 탈퇴
 src/main/resources/
   db/migration/           # Flyway 마이그레이션
   templates/              # Mustache 템플릿

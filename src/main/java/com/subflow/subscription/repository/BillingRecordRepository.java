@@ -18,6 +18,8 @@ public interface BillingRecordRepository extends JpaRepository<BillingRecord, Lo
 
     boolean existsBySubscriptionIdAndBillingDateAndAmount(Long subscriptionId, LocalDate billingDate, BigDecimal amount);
 
+    void deleteAllBySubscriptionId(Long subscriptionId);
+
     @Query("SELECT r FROM BillingRecord r JOIN FETCH r.subscription ORDER BY r.billingDate DESC LIMIT 20")
     List<BillingRecord> findRecentWithSubscription();
 }

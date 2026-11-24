@@ -17,4 +17,6 @@ public interface NotificationHistoryRepository extends JpaRepository<Notificatio
 
     boolean existsBySubscriptionIdAndTypeAndSentAtBetween(
             Long subscriptionId, NotificationType type, LocalDateTime start, LocalDateTime end);
+
+    void deleteAllBySubscriptionId(Long subscriptionId);
 }

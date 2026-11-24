@@ -12,4 +12,6 @@ public interface SettlementRecordRepository extends JpaRepository<SettlementReco
     List<SettlementRecord> findAllByShareIdInAndPeriod(Collection<Long> shareIds, String period);
 
     Optional<SettlementRecord> findByShareIdAndPeriod(Long shareId, String period);
+
+    void deleteAllByShareId(Long shareId);
 }
