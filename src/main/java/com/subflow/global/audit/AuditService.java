@@ -46,7 +46,9 @@ public class AuditService {
                        String targetType,
                        Long targetId,
                        String detail) {
-        String email = StringUtils.hasText(actorEmail) ? actorEmail.trim() : null;
+        String email = StringUtils.hasText(actorEmail)
+                ? actorEmail.trim().toLowerCase(Locale.ROOT)
+                : null;
         HttpServletRequest request = currentRequest();
 
         auditRepository.save(AuditEvent.builder()
@@ -54,7 +56,7 @@ public class AuditService {
                 .eventType(type)
                 .outcome(outcome)
                 .actorUserId(actorUserId(email))
-                .actorEmailHash(email == null ? null : hash("email:", email.toLowerCase(Locale.ROOT)))
+                .actorEmailHash(email == null ? null : hash("email:", email))
                 .targetType(targetType)
                 .targetId(targetId)
                 .ipHash(ipHash(request))

@@ -60,6 +60,7 @@ public class RequestThrottleFilter extends OncePerRequestFilter {
 
     private final boolean enabled;
     private final SlidingWindowLimiter limiter;
+    private final SlidingWindowLimiter auditLimiter;
     private final ClientIpResolver clientIpResolver;
     private final CurrentUserProvider currentUserProvider;
     private final ObjectMapper objectMapper;
@@ -67,12 +68,14 @@ public class RequestThrottleFilter extends OncePerRequestFilter {
 
     public RequestThrottleFilter(boolean enabled,
                                  SlidingWindowLimiter limiter,
+                                 SlidingWindowLimiter auditLimiter,
                                  ClientIpResolver clientIpResolver,
                                  CurrentUserProvider currentUserProvider,
                                  ObjectMapper objectMapper,
                                  AuditService auditService) {
         this.enabled = enabled;
         this.limiter = limiter;
+        this.auditLimiter = auditLimiter;
         this.clientIpResolver = clientIpResolver;
         this.currentUserProvider = currentUserProvider;
         this.objectMapper = objectMapper;
@@ -118,7 +121,7 @@ public class RequestThrottleFilter extends OncePerRequestFilter {
         if (limiter.tryAcquire(key, rule.limit(), rule.window())) {
             return true;
         }
-        reject(rule, response, limiter.retryAfterSeconds(key, rule.window()));
+        reject(rule, key, response, limiter.retryAfterSeconds(key, rule.window()));
         return false;
     }
 
@@ -149,16 +152,24 @@ public class RequestThrottleFilter extends OncePerRequestFilter {
         return clientIpResolver.resolve(request);
     }
 
-    private void reject(Rule rule, HttpServletResponse response, long retryAfterSeconds) throws IOException {
-        recordRateLimited(rule);
+    private void reject(Rule rule, String key, HttpServletResponse response, long retryAfterSeconds)
+            throws IOException {
+        recordRateLimited(rule, key);
         response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
         response.setHeader(HttpHeaders.RETRY_AFTER, String.valueOf(retryAfterSeconds));
         response.setContentType(MediaType.APPLICATION_JSON_VALUE + ";charset=" + StandardCharsets.UTF_8.name());
         objectMapper.writeValue(response.getWriter(), ErrorResponse.of(ErrorCode.TOO_MANY_REQUESTS));
     }
 
-    private void recordRateLimited(Rule rule) {
+    /**
+     * 같은 규칙·키의 거부는 1분에 한 번만 감사 기록해 429 폭주 시 DB 쓰기 증폭을 막는다.
+     * 감사 기록이 실패해도 429 응답은 그대로 반환한다.
+     */
+    private void recordRateLimited(Rule rule, String key) {
         try {
+            if (!auditLimiter.tryAcquire(rule.name() + ":audit:" + key, 1, ONE_MINUTE)) {
+                return;
+            }
             auditService.record(AuditEventType.RATE_LIMITED, AuditOutcome.DENIED,
                     currentUserEmail(), null, null, rule.name());
         } catch (RuntimeException e) {

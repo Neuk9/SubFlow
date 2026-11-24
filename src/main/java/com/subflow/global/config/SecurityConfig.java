@@ -108,6 +108,7 @@ public class SecurityConfig {
                 new RequestThrottleFilter(
                         securityProperties.rateLimit().enabled(),
                         new SlidingWindowLimiter(clock),
+                        new SlidingWindowLimiter(clock),
                         new ClientIpResolver(securityProperties.trustCloudflareHeaders()),
                         currentUserProvider,
                         objectMapper,
