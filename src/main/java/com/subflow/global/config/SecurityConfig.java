@@ -3,6 +3,7 @@ package com.subflow.global.config;
 import com.subflow.global.auth.CustomOAuth2UserService;
 import com.subflow.global.auth.CustomOidcUserService;
 import com.subflow.global.auth.OAuth2LoginSuccessHandler;
+import com.subflow.global.logging.NoStoreFilter;
 import com.subflow.global.security.ApiAccessDeniedHandler;
 import com.subflow.global.security.ApiAuthenticationEntryPoint;
 import com.subflow.global.security.AuthMode;
@@ -13,12 +14,14 @@ import com.subflow.global.security.SecurityPaths;
 import com.subflow.global.security.SecurityProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.csrf.HttpSessionCsrfTokenRepository;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import tools.jackson.databind.ObjectMapper;
 
@@ -57,12 +60,33 @@ public class SecurityConfig {
                 new OriginVerifierFilter(securityProperties.allowedOrigins(), objectMapper),
                 CsrfFilter.class);
 
+        http.headers(headers -> {
+            headers.contentTypeOptions(Customizer.withDefaults());
+            headers.referrerPolicy(referrer -> referrer
+                    .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN));
+            headers.permissionsPolicyHeader(permissions -> permissions
+                    .policy("camera=(), microphone=(), geolocation=()"));
+            headers.frameOptions(frame -> {
+                if (mode == AuthMode.DEMO) {
+                    frame.sameOrigin();
+                } else {
+                    frame.deny();
+                }
+            });
+            headers.httpStrictTransportSecurity(hsts -> hsts
+                    .maxAgeInSeconds(31536000)
+                    .includeSubDomains(true));
+            headers.contentSecurityPolicy(csp -> csp.policyDirectives(contentSecurityPolicy(mode)));
+            // no-store는 NoStoreFilter가 API와 인증된 HTML에만 적용한다. 정적 자원은 캐시를 허용한다.
+            headers.cacheControl(cache -> cache.disable());
+        });
+
         List<String> publicPaths = new ArrayList<>(List.of(SecurityPaths.PUBLIC_PATHS));
         if (mode == AuthMode.DEMO) {
             publicPaths.add("/h2-console/**");
-            http.headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()));
             http.addFilterBefore(new DemoAuthenticationFilter(), AnonymousAuthenticationFilter.class);
         }
+        http.addFilterAfter(new NoStoreFilter(), AnonymousAuthenticationFilter.class);
 
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers(publicPaths.toArray(String[]::new)).permitAll()
@@ -86,5 +110,23 @@ public class SecurityConfig {
         }
 
         return http.build();
+    }
+
+    /**
+     * jsDelivr 자체 호스팅 전까지 CDN과 인라인 핸들러를 임시로 허용한다.
+     * Task 12에서 {@code 'unsafe-inline'}을, Task 13에서 CDN을 제거해 최종 {@code 'self'} 정책으로 좁힌다.
+     */
+    private String contentSecurityPolicy(AuthMode mode) {
+        String frameAncestors = mode == AuthMode.DEMO ? "'self'" : "'none'";
+        return "default-src 'self'; "
+                + "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+                + "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+                + "font-src 'self' https://cdn.jsdelivr.net; "
+                + "img-src 'self' data:; "
+                + "connect-src 'self'; "
+                + "object-src 'none'; "
+                + "base-uri 'self'; "
+                + "frame-ancestors " + frameAncestors + "; "
+                + "form-action 'self'";
     }
 }

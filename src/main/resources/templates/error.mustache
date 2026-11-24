@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <title>SubFlow - 오류</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+<body class="sf-auth-body">
+<main class="sf-auth-card">
+    <h1 class="sf-auth-brand">SubFlow</h1>
+    <p class="sf-auth-lead">요청을 처리하는 중 문제가 발생했습니다.</p>
+    <p class="sf-auth-note">오류 코드: {{status}}</p>
+    {{#requestId}}
+    <p class="sf-auth-note">요청 ID: {{requestId}}</p>
+    {{/requestId}}
+    <p class="sf-auth-note"><a href="/">홈으로 돌아가기</a></p>
+</main>
+</body>
+</html>
