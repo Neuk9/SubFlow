@@ -67,7 +67,7 @@ public class UserService {
         user.updateProfile(
                 request.birthYear() != null ? request.birthYear() : user.getBirthYear(),
                 request.occupation() != null ? request.occupation() : user.getOccupation(),
-                request.householdSize() != null ? request.householdSize() : user.getHouseholdSize(),
+                request.householdSize(),
                 request.interests() != null ? request.interests() : user.interestSet(),
                 request.memberships() != null ? request.memberships() : user.membershipSet());
         return toProfile(user);
@@ -109,6 +109,9 @@ public class UserService {
     @Transactional
     public ProfileResponse updateConsent(String email, com.subflow.user.dto.ConsentUpdateRequest request) {
         if (request.type() != ConsentType.MARKETING && request.type() != ConsentType.NOTIFICATION) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+        if (request.agreed() == null) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
         User user = findUser(email);

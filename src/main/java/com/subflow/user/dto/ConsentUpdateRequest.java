@@ -7,6 +7,7 @@ public record ConsentUpdateRequest(
         @NotNull(message = "동의 항목을 선택해 주세요.")
         ConsentType type,
 
-        boolean agreed
+        @NotNull(message = "동의 여부를 선택해 주세요.")
+        Boolean agreed
 ) {
 }

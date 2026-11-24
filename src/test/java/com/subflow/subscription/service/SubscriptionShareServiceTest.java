@@ -214,6 +214,64 @@ class SubscriptionShareServiceTest {
         assertThat(summary.pending()).isEqualByComparingTo("5000");
     }
 
+    @Test
+    @DisplayName("초대 대기 중인 멤버는 정산 완료로 표시할 수 없다")
+    void rejectsSettlingPendingShare() {
+        SubscriptionShare pending = pendingShare(10L, "m@b.com");
+        given(shareRepository.findById(10L)).willReturn(Optional.of(pending));
+        given(subscriptionFinder.currentOwnerEmail()).willReturn(OWNER);
+
+        assertThatThrownBy(() -> shareService.settle(10L, new ShareSettleRequest(PERIOD, true)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_SHARE_STATUS);
+    }
+
+    @Test
+    @DisplayName("본인 이메일로는 공유 초대를 보낼 수 없다")
+    void rejectsSelfInvitation() {
+        given(subscriptionFinder.findOwnedById(1L)).willReturn(subscription());
+
+        assertThatThrownBy(() -> shareService.addShare(1L,
+                new ShareCreateRequest("나", new BigDecimal("5000"), OWNER)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    @Test
+    @DisplayName("해지된 구독의 공유는 정산 요약에서 제외된다")
+    void excludesCanceledSubscriptionFromSummary() {
+        Subscription canceled = subscription();
+        canceled.cancelImmediately(LocalDate.of(2026, 11, 1));
+        SubscriptionShare share = share(10L, canceled, "민수", "5000");
+
+        given(subscriptionFinder.currentOwnerEmail()).willReturn(OWNER);
+        given(shareRepository.findAllBySubscriptionOwnerEmailOrderByIdAsc(OWNER)).willReturn(List.of(share));
+
+        ShareSummaryResponse summary = shareService.getSummary(PERIOD);
+
+        assertThat(summary.memberCount()).isZero();
+        assertThat(summary.totalShare()).isEqualByComparingTo("0");
+    }
+
+    @Test
+    @DisplayName("소유자가 정산 확인한 내역은 멤버가 송금 취소할 수 없다")
+    void rejectsUnmarkingPaymentAfterSettled() {
+        SubscriptionShare share = share(10L, subscription(), "민수", "8500");
+        ReflectionTestUtils.setField(share, "memberEmail", "m@b.com");
+        ReflectionTestUtils.setField(share, "status", ShareStatus.ACTIVE);
+        given(shareRepository.findById(10L)).willReturn(Optional.of(share));
+        given(subscriptionFinder.currentOwnerEmail()).willReturn("m@b.com");
+        given(settlementRepository.findByShareIdAndPeriod(10L, PERIOD))
+                .willReturn(Optional.of(settled(10L, "2026-11-20")));
+
+        assertThatThrownBy(() -> shareService.markPayment(10L, new SharePaymentRequest(PERIOD, false)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_SHARE_STATUS);
+    }
+
     private Subscription subscription() {
         Subscription subscription = Subscription.builder()
                 .serviceName("넷플릭스 프리미엄")

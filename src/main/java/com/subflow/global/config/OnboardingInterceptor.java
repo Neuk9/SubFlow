@@ -42,6 +42,12 @@ public class OnboardingInterceptor implements HandlerInterceptor {
         if (completed) {
             return true;
         }
+        if (path.startsWith("/api/")) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"status\":403,\"code\":\"ONBOARDING_REQUIRED\",\"message\":\"온보딩을 먼저 완료해 주세요.\"}");
+            return false;
+        }
         response.sendRedirect("/onboarding");
         return false;
     }

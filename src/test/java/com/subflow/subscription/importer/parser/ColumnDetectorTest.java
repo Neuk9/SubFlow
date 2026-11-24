@@ -72,6 +72,16 @@ class ColumnDetectorTest {
         assertThat(result.mapping()).isEqualTo(new ColumnMapping(0, 1, 2));
     }
 
+    @Test
+    @DisplayName("하나의 헤더가 여러 키워드에 겹쳐도 예외 없이 추론 또는 수동 매핑으로 넘어간다")
+    void handlesOverlappingHeaderKeywordsWithoutThrowing() {
+        CsvDocument doc = parse("거래일,출금내용\n2026-08-15,10900\n");
+
+        ColumnDetection result = detector.detect(doc, true);
+
+        assertThat(result.needsMapping()).isTrue();
+    }
+
     private CsvDocument parse(String content) {
         return parser.parse(content.getBytes(StandardCharsets.UTF_8));
     }

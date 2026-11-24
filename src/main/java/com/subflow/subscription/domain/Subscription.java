@@ -139,11 +139,16 @@ public class Subscription extends BaseTimeEntity {
 
     public void pause() {
         requireNotCanceled("일시 정지");
+        this.cancellationScheduledAt = null;
         this.status = SubscriptionStatus.PAUSED;
     }
 
     public void resume(LocalDate calculatedNextBillingDate) {
         requireNotCanceled("재개");
+        if (this.status == SubscriptionStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미 이용 중인 구독입니다.");
+        }
+        this.cancellationScheduledAt = null;
         this.status = SubscriptionStatus.ACTIVE;
         this.nextBillingDate = calculatedNextBillingDate;
     }

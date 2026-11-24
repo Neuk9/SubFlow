@@ -151,6 +151,18 @@ class BillingDateCalculatorTest {
 
             assertThat(nextBillingDate).isEqualTo(LocalDate.of(2026, 2, 28));
         }
+
+        @Test
+        @DisplayName("윤년 2월 29일 연간 구독의 다음 주기 갱신 시 다음 윤년에 2월 29일로 복구된다")
+        void leapYearYearlyCycleRestoresFeb29() {
+            LocalDate y2025 = calculator.calculateNextCycleDate(BillingCycle.YEARLY, LocalDate.of(2024, 2, 29), 29);
+            LocalDate y2026 = calculator.calculateNextCycleDate(BillingCycle.YEARLY, y2025, 29);
+            LocalDate y2027 = calculator.calculateNextCycleDate(BillingCycle.YEARLY, y2026, 29);
+            LocalDate y2028 = calculator.calculateNextCycleDate(BillingCycle.YEARLY, y2027, 29);
+
+            assertThat(y2025).isEqualTo(LocalDate.of(2025, 2, 28));
+            assertThat(y2028).isEqualTo(LocalDate.of(2028, 2, 29));
+        }
     }
 
     @Nested

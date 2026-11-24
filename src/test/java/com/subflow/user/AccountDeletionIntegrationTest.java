@@ -109,11 +109,38 @@ class AccountDeletionIntegrationTest {
                 .agreedAt(LocalDateTime.now())
                 .build());
 
+        Subscription otherOwnerSub = subscriptionRepository.save(Subscription.builder()
+                .serviceName("스포티파이 패밀리")
+                .category(Category.MUSIC)
+                .fee(new BigDecimal("19500"))
+                .billingCycle(BillingCycle.MONTHLY)
+                .billingDay(10)
+                .startDate(LocalDate.now())
+                .nextBillingDate(LocalDate.now().plusMonths(1))
+                .monthlyExpense(new BigDecimal("19500"))
+                .ownerEmail("friend@example.com")
+                .build());
+
+        SubscriptionShare memberShare = shareRepository.save(SubscriptionShare.builder()
+                .subscription(otherOwnerSub)
+                .memberName("늑구")
+                .memberEmail(EMAIL)
+                .shareAmount(new BigDecimal("6500"))
+                .build());
+
+        settlementRepository.save(SettlementRecord.builder()
+                .share(memberShare)
+                .period("2026-11")
+                .memberPaid(true)
+                .memberPaidAt(LocalDate.now())
+                .build());
+
         deletionService.deleteAccount(EMAIL);
 
         assertThat(userRepository.findByEmail(EMAIL)).isEmpty();
         assertThat(consentRepository.findAllByUserId(user.getId())).isEmpty();
-        assertThat(subscriptionRepository.count()).isZero();
+        assertThat(subscriptionRepository.findAllByOwnerEmailOrderByNextBillingDateAsc(EMAIL)).isEmpty();
+        assertThat(shareRepository.findAllByMemberEmailIgnoreCaseOrderByIdAsc(EMAIL)).isEmpty();
         assertThat(billingRecordRepository.count()).isZero();
         assertThat(shareRepository.count()).isZero();
         assertThat(settlementRepository.count()).isZero();

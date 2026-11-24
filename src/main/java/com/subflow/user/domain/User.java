@@ -121,6 +121,10 @@ public class User extends BaseTimeEntity {
         if (values == null || values.isEmpty()) {
             return null;
         }
-        return values.stream().map(Enum::name).collect(Collectors.joining(","));
+        String joined = values.stream()
+                .filter(java.util.Objects::nonNull)
+                .map(Enum::name)
+                .collect(Collectors.joining(","));
+        return joined.isEmpty() ? null : joined;
     }
 }

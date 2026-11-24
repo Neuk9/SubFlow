@@ -69,6 +69,14 @@ class SubscriptionResponseTest {
         assertThat(response.getLogoColor()).isNull();
     }
 
+    @Test
+    @DisplayName("D-Day 라벨이 양수·당일·지난 날짜를 올바르게 표시한다")
+    void formatsDDayLabel() {
+        assertThat(SubscriptionResponse.builder().dDay(5).build().getDDayLabel()).isEqualTo("D-5");
+        assertThat(SubscriptionResponse.builder().dDay(0).build().getDDayLabel()).isEqualTo("D-Day");
+        assertThat(SubscriptionResponse.builder().dDay(-3).build().getDDayLabel()).isEqualTo("D+3");
+    }
+
     private Subscription subscription(String serviceName) {
         return Subscription.builder()
                 .serviceName(serviceName)

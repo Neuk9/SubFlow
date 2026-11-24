@@ -17,6 +17,7 @@ public record ImportCandidate(
         LocalDate suggestedStartDate,
         int occurrences,
         List<Integer> rowNumbers,
-        String logoSlug
+        String logoSlug,
+        boolean logoImage
 ) {
 }

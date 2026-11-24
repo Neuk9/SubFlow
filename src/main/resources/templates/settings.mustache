@@ -6,13 +6,20 @@
     <meta name="color-scheme" content="dark">
     <title>SubFlow - 설정</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-    <link rel="stylesheet" href="/css/app.css?v=20261125q">
+    <link rel="stylesheet" href="/css/app.css?v=20261125r">
 </head>
 <body class="sf-auth-body">
 <main class="sf-auth-card sf-auth-card-wide">
     <div class="sf-settings-head">
         <h1 class="sf-auth-brand">설정</h1>
-        <a class="sf-btn sf-btn-ghost sf-btn-sm" href="/">돌아가기</a>
+        <div class="sf-settings-actions">
+            {{#authEnabled}}
+            <form method="post" action="/logout">
+                <button type="submit" class="sf-btn sf-btn-ghost sf-btn-sm">로그아웃</button>
+            </form>
+            {{/authEnabled}}
+            <a class="sf-btn sf-btn-ghost sf-btn-sm" href="/">돌아가기</a>
+        </div>
     </div>
 
     <section class="sf-settings-section">
@@ -56,6 +63,6 @@
     <div class="sf-error d-none" id="settingsError" role="alert"></div>
 </main>
 
-<script src="/js/settings.js?v=20261125q"></script>
+<script src="/js/settings.js?v=20261125r"></script>
 </body>
 </html>

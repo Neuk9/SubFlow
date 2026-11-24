@@ -89,6 +89,16 @@ public class SubscriptionResponse {
         return trimmed.substring(0, trimmed.offsetByCodePoints(0, 1));
     }
 
+    public String getDDayLabel() {
+        if (dDay == 0) {
+            return "D-Day";
+        }
+        if (dDay > 0) {
+            return "D-" + dDay;
+        }
+        return "D+" + Math.abs(dDay);
+    }
+
     public String getCategoryColor() {
         return category == null ? Category.OTHER.getColor() : category.getColor();
     }

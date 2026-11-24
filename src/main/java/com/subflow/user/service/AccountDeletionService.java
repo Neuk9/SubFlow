@@ -53,6 +53,13 @@ public class AccountDeletionService {
         }
         subscriptionRepository.deleteAll(subscriptions);
 
+        List<SubscriptionShare> memberShares = shareRepository
+                .findAllByMemberEmailIgnoreCaseOrderByIdAsc(email);
+        for (SubscriptionShare memberShare : memberShares) {
+            settlementRepository.deleteAllByShareId(memberShare.getId());
+        }
+        shareRepository.deleteAll(memberShares);
+
         userConsentRepository.deleteAllByUserId(user.getId());
         userRepository.delete(user);
     }

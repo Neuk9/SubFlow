@@ -1,17 +1,23 @@
 package com.subflow.subscription.service;
 
-import com.subflow.global.auth.CurrentUserProvider;
+import com.subflow.global.exception.BusinessException;
+import com.subflow.global.exception.ErrorCode;
 import com.subflow.subscription.calculator.BillingDateCalculator;
 import com.subflow.subscription.calculator.ExpenseCalculator;
 import com.subflow.subscription.domain.BillingCycle;
 import com.subflow.subscription.domain.Category;
 import com.subflow.subscription.domain.Subscription;
+import com.subflow.subscription.domain.SubscriptionShare;
 import com.subflow.subscription.domain.SubscriptionStatus;
 import com.subflow.subscription.dto.SubscriptionCancelRequest;
 import com.subflow.subscription.dto.SubscriptionCreateRequest;
 import com.subflow.subscription.dto.SubscriptionResponse;
 import com.subflow.subscription.dto.SubscriptionUpdateRequest;
+import com.subflow.subscription.repository.BillingRecordRepository;
+import com.subflow.subscription.repository.NotificationHistoryRepository;
+import com.subflow.subscription.repository.SettlementRecordRepository;
 import com.subflow.subscription.repository.SubscriptionRepository;
+import com.subflow.subscription.repository.SubscriptionShareRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -19,13 +25,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.util.Optional;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -37,6 +45,18 @@ class SubscriptionServiceTest {
 
     @Mock
     private SubscriptionRepository subscriptionRepository;
+
+    @Mock
+    private BillingRecordRepository billingRecordRepository;
+
+    @Mock
+    private NotificationHistoryRepository notificationHistoryRepository;
+
+    @Mock
+    private SubscriptionShareRepository shareRepository;
+
+    @Mock
+    private SettlementRecordRepository settlementRepository;
 
     @Mock
     private BillingDateCalculator billingDateCalculator;
@@ -172,5 +192,101 @@ class SubscriptionServiceTest {
         assertThat(response.getNextBillingDate()).isEqualTo(alreadyAdvanced);
         verify(billingDateCalculator, never())
                 .calculateNextBillingDate(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("구독 삭제 시 연관된 알림·결제·공유·정산 기록을 먼저 삭제한다")
+    void deleteSubscriptionDeletesChildrenFirst() {
+        Subscription subscription = Subscription.builder()
+                .serviceName("넷플릭스")
+                .category(Category.OTT)
+                .fee(BigDecimal.valueOf(17000))
+                .billingCycle(BillingCycle.MONTHLY)
+                .billingDay(25)
+                .startDate(LocalDate.now().minusMonths(1))
+                .nextBillingDate(LocalDate.now().plusDays(5))
+                .monthlyExpense(BigDecimal.valueOf(17000))
+                .ownerEmail("test@subflow.dev")
+                .build();
+        ReflectionTestUtils.setField(subscription, "id", 1L);
+        SubscriptionShare share = SubscriptionShare.builder()
+                .subscription(subscription)
+                .memberName("민수")
+                .shareAmount(BigDecimal.valueOf(8500))
+                .build();
+        ReflectionTestUtils.setField(share, "id", 10L);
+
+        given(subscriptionFinder.findOwnedById(1L)).willReturn(subscription);
+        given(shareRepository.findAllBySubscriptionIdOrderByIdAsc(1L)).willReturn(List.of(share));
+
+        subscriptionCommandService.deleteSubscription(1L);
+
+        verify(notificationHistoryRepository).deleteAllBySubscriptionId(1L);
+        verify(billingRecordRepository).deleteAllBySubscriptionId(1L);
+        verify(settlementRepository).deleteAllByShareId(10L);
+        verify(shareRepository).deleteAllBySubscriptionId(1L);
+        verify(subscriptionRepository).delete(subscription);
+    }
+
+    @Test
+    @DisplayName("결제 주기가 연간에서 월간으로 바뀌어 다음 결제일이 앞당겨져도 갱신된다")
+    void updateSubscriptionAppliesEarlierNextBillingDate() {
+        LocalDate start = LocalDate.now().minusMonths(2);
+        LocalDate farNext = LocalDate.now().plusMonths(10);
+        LocalDate nearerNext = LocalDate.now().plusDays(10);
+        Subscription subscription = Subscription.builder()
+                .serviceName("노션 Plus")
+                .category(Category.PRODUCTIVITY)
+                .fee(BigDecimal.valueOf(120000))
+                .billingCycle(BillingCycle.YEARLY)
+                .startDate(start)
+                .nextBillingDate(farNext)
+                .monthlyExpense(BigDecimal.valueOf(10000))
+                .ownerEmail("test@subflow.dev")
+                .build();
+
+        given(subscriptionFinder.findOwnedById(1L)).willReturn(subscription);
+        given(billingDateCalculator.calculateNextBillingDate(eq(BillingCycle.MONTHLY), eq(start), eq(15), any(LocalDate.class)))
+                .willReturn(nearerNext);
+        given(expenseCalculator.calculateMonthlyExpense(eq(BigDecimal.valueOf(15000)), eq(BillingCycle.MONTHLY)))
+                .willReturn(BigDecimal.valueOf(15000));
+
+        SubscriptionUpdateRequest request = SubscriptionUpdateRequest.builder()
+                .serviceName("노션 Plus")
+                .category(Category.PRODUCTIVITY)
+                .fee(BigDecimal.valueOf(15000))
+                .billingCycle(BillingCycle.MONTHLY)
+                .billingDay(15)
+                .remindDaysBefore(3)
+                .build();
+
+        SubscriptionResponse response = subscriptionCommandService.updateSubscription(1L, request);
+
+        assertThat(response.getNextBillingDate()).isEqualTo(nearerNext);
+    }
+
+    @Test
+    @DisplayName("과거 날짜로 해지 예약 요청 시 INVALID_DATE_RANGE 예외가 발생한다")
+    void cancelSubscriptionRejectsPastScheduledDate() {
+        Subscription subscription = Subscription.builder()
+                .serviceName("유튜브 프리미엄")
+                .category(Category.OTT)
+                .fee(BigDecimal.valueOf(14900))
+                .billingCycle(BillingCycle.MONTHLY)
+                .billingDay(10)
+                .startDate(LocalDate.now().minusMonths(1))
+                .nextBillingDate(LocalDate.now().plusDays(5))
+                .monthlyExpense(BigDecimal.valueOf(14900))
+                .ownerEmail("test@subflow.dev")
+                .build();
+        given(subscriptionFinder.findOwnedById(1L)).willReturn(subscription);
+
+        SubscriptionCancelRequest pastRequest = new SubscriptionCancelRequest(LocalDate.now().minusDays(1));
+
+        assertThatThrownBy(() -> subscriptionCommandService.cancelSubscription(1L, pastRequest))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_DATE_RANGE);
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
     }
 }

@@ -80,7 +80,7 @@ public class CsvImportService {
                     List.of(), List.of(), 0, List.of());
         }
 
-        int headerOffset = detection.headerRowIndex() >= 0 ? 1 : 0;
+        int headerOffset = detection.headerRowIndex() >= 0 ? detection.headerRowIndex() + 1 : 0;
         if (document.rows().size() - headerOffset > MAX_ROWS) {
             throw new BusinessException(ErrorCode.IMPORT_LIMIT_EXCEEDED);
         }
@@ -148,15 +148,16 @@ public class CsvImportService {
             if (subscription == null) {
                 throw new BusinessException(ErrorCode.SUBSCRIPTION_NOT_FOUND);
             }
+            BigDecimal normalizedAmount = record.amount().setScale(2, RoundingMode.HALF_UP);
             if (billingRecordRepository.existsBySubscriptionIdAndBillingDateAndAmount(
-                    record.subscriptionId(), record.billingDate(), record.amount())) {
+                    record.subscriptionId(), record.billingDate(), normalizedAmount)) {
                 skippedCount++;
                 continue;
             }
             billingRecordRepository.save(BillingRecord.builder()
                     .subscription(subscription)
                     .billingDate(record.billingDate())
-                    .amount(record.amount())
+                    .amount(normalizedAmount)
                     .status(BillingStatus.PAID)
                     .memo(importMemo(record.merchant()))
                     .build());
@@ -164,6 +165,9 @@ public class CsvImportService {
         }
 
         for (SubscriptionCreateRequest createRequest : newSubscriptions) {
+            if (createRequest == null) {
+                throw new BusinessException(ErrorCode.INVALID_IMPORT_ROW);
+            }
             subscriptionCommandService.createSubscription(createRequest);
         }
 

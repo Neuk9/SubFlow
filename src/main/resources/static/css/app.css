@@ -2940,7 +2940,9 @@ body { font-size: 16px; }
 @media (max-width: 720px) { .sf-share-form { grid-template-columns: minmax(0, 1fr); } }
 
 /* Settings */
-.sf-settings-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sf-settings-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.sf-settings-actions { display: flex; align-items: center; gap: 8px; }
+.sf-settings-actions form { margin: 0; }
 .sf-settings-section { padding: 22px 0; border-top: 1px solid var(--sf-border); }
 .sf-settings-section h2 { margin: 0 0 12px; font-size: 16px; font-weight: 700; }
 .sf-profile-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; margin: 0 0 16px; }
@@ -2954,3 +2956,42 @@ body { font-size: 16px; }
 .sf-btn-danger { background: var(--sf-danger); color: #ffffff; }
 .sf-btn-danger:hover { background: #e03b31; color: #ffffff; }
 @media (max-width: 560px) { .sf-profile-list { grid-template-columns: minmax(0, 1fr); } .sf-delete-row { flex-direction: column; } }
+
+/* Candidate PNG logos (no mask) */
+.sf-candidate-logo.is-image {
+    display: grid;
+    place-items: center;
+    -webkit-mask: none;
+    mask: none;
+    background: #f5f5f7;
+}
+
+/* Responsive overrides (kept last so earlier theme/density rules never override mobile layout) */
+@media (max-width: 1100px) {
+    .sf-cal-layout { grid-template-columns: minmax(0, 1fr); }
+    .sf-chart-grid { grid-template-columns: minmax(0, 1fr); }
+    .sf-today { display: none; }
+}
+
+@media (max-width: 767.98px) {
+    .cal-event-pill {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        margin: 2px;
+        padding: 0;
+        border-radius: 50%;
+        background: var(--c, #0a84ff);
+        font-size: 0;
+    }
+
+    .cal-event-pill > * {
+        display: none;
+    }
+}
+
+@media (max-width: 720px) {
+    .sf-sub-item { grid-template-columns: 40px minmax(0, 1fr) auto; }
+    .sf-sub-actions { grid-column: 1 / -1; justify-content: flex-end; }
+    .calendar-day-cell { height: 88px; padding: 6px; }
+}

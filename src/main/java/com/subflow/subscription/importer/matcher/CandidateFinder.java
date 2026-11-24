@@ -3,6 +3,7 @@ package com.subflow.subscription.importer.matcher;
 import com.subflow.subscription.brand.ServiceBrand;
 import com.subflow.subscription.domain.BillingCycle;
 import com.subflow.subscription.domain.Subscription;
+import com.subflow.subscription.domain.SubscriptionStatus;
 import com.subflow.subscription.importer.parser.ParsedPayment;
 
 import java.math.BigDecimal;
@@ -74,7 +75,8 @@ public class CandidateFinder {
                     payments.get(0).billingDate(),
                     payments.size(),
                     payments.stream().map(ParsedPayment::rowNumber).toList(),
-                    brand != null ? brand.getSlug() : null));
+                    brand != null ? brand.getSlug() : null,
+                    brand != null && brand.isImage()));
         }
         return candidates;
     }
@@ -123,6 +125,9 @@ public class CandidateFinder {
     private boolean isExisting(ServiceBrand brand, String normalizedMerchant, BigDecimal amount,
                                List<Subscription> existingSubscriptions) {
         for (Subscription subscription : existingSubscriptions) {
+            if (subscription.getStatus() == SubscriptionStatus.CANCELED) {
+                continue;
+            }
             if (brand != null && brand == ServiceBrand.resolve(subscription.getServiceName())) {
                 return true;
             }

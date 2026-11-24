@@ -20,8 +20,8 @@ public record OnboardingRequest(
         @Max(value = 10, message = "가구원 수는 10명 이하여야 합니다.")
         Integer householdSize,
 
-        Set<Category> interests,
-        Set<Membership> memberships,
+        Set<@NotNull Category> interests,
+        Set<@NotNull Membership> memberships,
 
         Boolean agreePrivacy,
         Boolean agreeTerms,

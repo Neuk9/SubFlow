@@ -6,11 +6,14 @@
     <meta name="color-scheme" content="dark">
     <title>SubFlow - 시작하기</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-    <link rel="stylesheet" href="/css/app.css?v=20261125n">
+    <link rel="stylesheet" href="/css/app.css?v=20261125r">
 </head>
 <body class="sf-auth-body">
 <main class="sf-auth-card sf-auth-card-wide">
-    <h1 class="sf-auth-brand">SubFlow</h1>
+    <div class="sf-settings-head">
+        <h1 class="sf-auth-brand">SubFlow</h1>
+        <a class="sf-btn sf-btn-ghost sf-btn-sm d-none" id="onboardingBackLink" href="/settings">돌아가기</a>
+    </div>
     <p class="sf-auth-lead">맞춤 절약 혜택을 찾기 위해 몇 가지만 알려주세요.</p>
 
     <form id="onboardingForm" class="sf-onboarding" onsubmit="submitOnboarding(event)">
@@ -38,7 +41,12 @@
                 <option value="2">2명</option>
                 <option value="3">3명</option>
                 <option value="4">4명</option>
-                <option value="5">5명 이상</option>
+                <option value="5">5명</option>
+                <option value="6">6명</option>
+                <option value="7">7명</option>
+                <option value="8">8명</option>
+                <option value="9">9명</option>
+                <option value="10">10명</option>
             </select>
             <p class="sf-field-hint">가족 요금제나 1/N 분담 제안에 사용합니다.</p>
         </section>
@@ -62,7 +70,7 @@
             </div>
         </section>
 
-        <section class="sf-field sf-consent">
+        <section class="sf-field sf-consent" id="onboardingConsentSection">
             <label class="sf-consent-row">
                 <input type="checkbox" id="agreePrivacy" class="form-check-input" required>
                 <span>[필수] <a href="/privacy" target="_blank">개인정보 수집·이용</a>에 동의합니다.</span>
@@ -83,6 +91,6 @@
     </form>
 </main>
 
-<script src="/js/onboarding.js?v=20261125n"></script>
+<script src="/js/onboarding.js?v=20261125r"></script>
 </body>
 </html>

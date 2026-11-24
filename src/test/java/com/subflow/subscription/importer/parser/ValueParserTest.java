@@ -49,4 +49,11 @@ class ValueParserTest {
     void returnsEmptyForInvalidDate() {
         assertThat(ValueParser.parseDate("조회기간")).isEmpty();
     }
+
+    @Test
+    @DisplayName("이중 부호나 지수 표기 금액은 거부한다")
+    void rejectsMalformedOrScientificAmounts() {
+        assertThat(ValueParser.parseAmount("--1000")).isEmpty();
+        assertThat(ValueParser.parseAmount("1e10000000")).isEmpty();
+    }
 }
