@@ -1,10 +1,14 @@
 package com.subflow.subscription.service;
 
+import com.subflow.global.auth.CurrentUserProvider;
 import com.subflow.subscription.domain.BillingCycle;
 import com.subflow.subscription.domain.Category;
 import com.subflow.subscription.domain.Subscription;
 import com.subflow.subscription.dto.InsightResponse;
 import com.subflow.subscription.repository.SubscriptionRepository;
+import com.subflow.user.domain.Membership;
+import com.subflow.user.domain.Occupation;
+import com.subflow.user.domain.User;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -14,7 +18,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Year;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
@@ -29,6 +36,9 @@ class InsightServiceTest {
 
     @Mock
     private SubscriptionFinder subscriptionFinder;
+
+    @Mock
+    private CurrentUserProvider currentUserProvider;
 
     @InjectMocks
     private InsightService insightService;
@@ -76,6 +86,50 @@ class InsightServiceTest {
     }
 
     @Test
+    @DisplayName("가구원 수가 2명 이상이면 가족 요금제 절약을 제안한다")
+    void recommendsFamilyPlan() {
+        givenOwner(user(2002, Occupation.UNIVERSITY, 3, Set.of()),
+                subscription("유튜브 프리미엄", "14900"));
+
+        InsightResponse response = insightService.getInsights();
+
+        assertThat(response.benefits())
+                .filteredOn(benefit -> benefit.code().equals("FAMILY_PLAN"))
+                .isNotEmpty()
+                .allSatisfy(benefit -> assertThat(benefit.estimatedMonthlySaving()).isEqualByComparingTo("21800"));
+    }
+
+    @Test
+    @DisplayName("만 19~34세면 청년 혜택을 제안한다")
+    void recommendsYouthBenefit() {
+        givenOwner(user(Year.now().getValue() - 25, Occupation.WORKER, 1, Set.of()));
+
+        InsightResponse response = insightService.getInsights();
+
+        assertThat(response.benefits()).extracting(InsightResponse.BenefitRecommendation::code)
+                .contains("YOUTH");
+    }
+
+    @Test
+    @DisplayName("통신사 멤버십이 있으면 멤버십 할인을 제안한다")
+    void recommendsTelecomBenefit() {
+        givenOwner(user(2002, Occupation.WORKER, 1, Set.of(Membership.SKT)));
+
+        InsightResponse response = insightService.getInsights();
+
+        assertThat(response.benefits()).extracting(InsightResponse.BenefitRecommendation::code)
+                .contains("TELECOM_MEMBERSHIP");
+    }
+
+    @Test
+    @DisplayName("프로필이 없으면 혜택을 제안하지 않는다")
+    void noBenefitsWithoutProfile() {
+        givenOwner((User) null, subscription("유튜브 프리미엄", "14900"));
+
+        assertThat(insightService.getInsights().benefits()).isEmpty();
+    }
+
+    @Test
     @DisplayName("카탈로그에 없는 서비스는 인사이트에서 제외한다")
     void ignoresUnknownService() {
         givenOwner(subscription("동네 빵집 정기배송", "9000"));
@@ -88,9 +142,20 @@ class InsightServiceTest {
     }
 
     private void givenOwner(Subscription... subscriptions) {
+        givenOwner(null, subscriptions);
+    }
+
+    private void givenOwner(User user, Subscription... subscriptions) {
         given(subscriptionFinder.currentOwnerEmail()).willReturn(OWNER);
         given(subscriptionRepository.findAllByOwnerEmailOrderByNextBillingDateAsc(OWNER))
                 .willReturn(List.of(subscriptions));
+        given(currentUserProvider.findCurrentUser()).willReturn(Optional.ofNullable(user));
+    }
+
+    private User user(int birthYear, Occupation occupation, Integer householdSize, Set<Membership> memberships) {
+        User user = User.builder().googleSub("g-1").email(OWNER).name("늑구").build();
+        user.completeOnboarding(birthYear, occupation, householdSize, Set.of(), memberships);
+        return user;
     }
 
     private Subscription subscription(String serviceName, String monthlyExpense) {

@@ -674,6 +674,25 @@ async function renderInsights() {
                     <div class="sf-insight-saving">-${Number(item.saving).toLocaleString()}원/${item.period}</div>
                 </div>`).join('');
 
+        const benefits = data.benefits || [];
+        document.getElementById('insightBenefitTotal').textContent = benefits.length > 0
+            ? `${benefits.length}개 혜택을 확인해 보세요`
+            : '추천할 혜택이 없습니다';
+        document.getElementById('insightBenefits').innerHTML = benefits.length === 0
+            ? '<div class="sf-empty-line">프로필을 완성하면 맞춤 혜택을 추천해 드립니다.</div>'
+            : benefits.map(benefit => `
+                <div class="sf-insight-row">
+                    <div class="sf-insight-main">
+                        <div class="sf-insight-title">${escapeHtml(benefit.title)}</div>
+                        <div class="sf-insight-detail">${escapeHtml(benefit.description)}</div>
+                    </div>
+                    <div class="${benefit.estimatedMonthlySaving ? 'sf-insight-saving' : 'sf-insight-muted'}">
+                        ${benefit.estimatedMonthlySaving
+                            ? `-${Number(benefit.estimatedMonthlySaving).toLocaleString()}원/월`
+                            : '확인 필요'}
+                    </div>
+                </div>`).join('');
+
         const groups = data.duplicateGroups || [];
         const duplicateTotal = groups.reduce((sum, group) => sum + Number(group.monthlyTotal), 0);
         document.getElementById('insightDuplicateTotal').textContent =

@@ -8,7 +8,8 @@ public record InsightResponse(
         BigDecimal annualSavingTotal,
         List<StudentSaving> studentSavings,
         BigDecimal studentSavingTotal,
-        List<DuplicateGroup> duplicateGroups
+        List<DuplicateGroup> duplicateGroups,
+        List<BenefitRecommendation> benefits
 ) {
 
     public record AnnualSaving(
@@ -33,6 +34,14 @@ public record InsightResponse(
             String group,
             List<String> serviceNames,
             BigDecimal monthlyTotal
+    ) {
+    }
+
+    public record BenefitRecommendation(
+            String code,
+            String title,
+            String description,
+            BigDecimal estimatedMonthlySaving
     ) {
     }
 }

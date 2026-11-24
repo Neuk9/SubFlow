@@ -2929,3 +2929,6 @@ body { font-size: 16px; }
     accent-color: var(--sf-primary);
     flex: 0 0 auto;
 }
+
+.sf-benefit-panel { margin-bottom: 18px; }
+.sf-insight-muted { color: var(--sf-muted); font-size: 13px; white-space: nowrap; }
