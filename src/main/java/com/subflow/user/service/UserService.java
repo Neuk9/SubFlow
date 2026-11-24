@@ -55,7 +55,7 @@ public class UserService {
 
     public ProfileResponse getProfile(String email) {
         User user = findUser(email);
-        return ProfileResponse.of(user, isMarketingAgreed(user));
+        return toProfile(user);
     }
 
     @Transactional
@@ -70,7 +70,7 @@ public class UserService {
                 request.householdSize() != null ? request.householdSize() : user.getHouseholdSize(),
                 request.interests() != null ? request.interests() : user.interestSet(),
                 request.memberships() != null ? request.memberships() : user.membershipSet());
-        return ProfileResponse.of(user, isMarketingAgreed(user));
+        return toProfile(user);
     }
 
     @Transactional
@@ -98,7 +98,7 @@ public class UserService {
         recordConsent(user, ConsentType.PRIVACY, ConsentVersions.PRIVACY, agreedPrivacy, now);
         recordConsent(user, ConsentType.TERMS, ConsentVersions.TERMS, agreedTerms, now);
         recordConsent(user, ConsentType.MARKETING, ConsentVersions.MARKETING, agreedMarketing, now);
-        return ProfileResponse.of(user, agreedMarketing);
+        return toProfile(user);
     }
 
     private User findUser(String email) {
@@ -106,9 +106,29 @@ public class UserService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
     }
 
-    private boolean isMarketingAgreed(User user) {
+    @Transactional
+    public ProfileResponse updateConsent(String email, com.subflow.user.dto.ConsentUpdateRequest request) {
+        if (request.type() != ConsentType.MARKETING && request.type() != ConsentType.NOTIFICATION) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+        User user = findUser(email);
+        String version = request.type() == ConsentType.MARKETING
+                ? ConsentVersions.MARKETING
+                : ConsentVersions.NOTIFICATION;
+        recordConsent(user, request.type(), version, request.agreed(), LocalDateTime.now(clock));
+        return toProfile(user);
+    }
+
+    private ProfileResponse toProfile(User user) {
+        return ProfileResponse.of(
+                user,
+                isAgreed(user, ConsentType.MARKETING, ConsentVersions.MARKETING),
+                isAgreed(user, ConsentType.NOTIFICATION, ConsentVersions.NOTIFICATION));
+    }
+
+    private boolean isAgreed(User user, ConsentType type, String version) {
         return userConsentRepository
-                .findByUserIdAndConsentTypeAndVersion(user.getId(), ConsentType.MARKETING, ConsentVersions.MARKETING)
+                .findByUserIdAndConsentTypeAndVersion(user.getId(), type, version)
                 .map(UserConsent::isAgreed)
                 .orElse(false);
     }

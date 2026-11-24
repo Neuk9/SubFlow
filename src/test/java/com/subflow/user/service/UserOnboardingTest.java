@@ -8,6 +8,7 @@ import com.subflow.user.domain.Membership;
 import com.subflow.user.domain.Occupation;
 import com.subflow.user.domain.User;
 import com.subflow.user.domain.UserConsent;
+import com.subflow.user.dto.ConsentUpdateRequest;
 import com.subflow.user.dto.OnboardingRequest;
 import com.subflow.user.repository.UserConsentRepository;
 import com.subflow.user.repository.UserRepository;
@@ -112,6 +113,17 @@ class UserOnboardingTest {
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.REQUIRED_CONSENT_MISSING);
         assertThat(user.isOnboardingCompleted()).isFalse();
+    }
+
+    @Test
+    @DisplayName("선택 동의를 변경하면 기록을 저장한다")
+    void updatesConsent() {
+        User user = user();
+        given(userRepository.findByEmail(EMAIL)).willReturn(Optional.of(user));
+
+        userService.updateConsent(EMAIL, new ConsentUpdateRequest(ConsentType.MARKETING, false));
+
+        then(consentRepository).should().save(any(UserConsent.class));
     }
 
     @Test

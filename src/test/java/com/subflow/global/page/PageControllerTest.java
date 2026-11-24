@@ -60,6 +60,16 @@ class PageControllerTest {
     }
 
     @Test
+    @DisplayName("설정 페이지는 동의 토글과 데이터 내려받기를 제공한다")
+    void settingsPage() throws Exception {
+        mockMvc.perform(get("/settings"))
+                .andExpect(status().isOk())
+                .andExpect(view().name("settings"))
+                .andExpect(content().string(containsString("데이터 내려받기")))
+                .andExpect(content().string(containsString("회원 탈퇴")));
+    }
+
+    @Test
     @DisplayName("이용약관 페이지를 제공한다")
     void termsPage() throws Exception {
         mockMvc.perform(get("/terms"))

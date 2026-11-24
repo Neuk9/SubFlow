@@ -20,6 +20,7 @@
 - **계정 연동 공유**: 이메일 초대 → 수락 → 참여 중인 구독 확인, 양방향 정산(송금 완료/소유자 확인)
 - **Google 로그인·온보딩**: Google 단일 로그인, 최초 로그인 시 맞춤 혜택용 정보 입력
 - **개인정보 보호**: 동의 기록, 개인정보 처리방침·이용약관, 회원 탈퇴
+- **설정**: 마케팅·알림 수신 동의 변경, 내 데이터 JSON 내려받기
 - **배치 시뮬레이션**: 결제 갱신, 알림 발송, 만료 처리 (`local` 전용)
 
 ## 기술 스택
@@ -132,6 +133,8 @@ Flyway를 사용합니다. (`src/main/resources/db/migration`)
 | GET | `/api/services` | 서비스 카탈로그와 요금제 |
 | GET/PUT/DELETE | `/api/me` | 내 프로필 조회/수정/탈퇴 |
 | POST | `/api/me/onboarding` | 온보딩 제출 |
+| PUT | `/api/me/consents` | 마케팅·알림 동의 변경 |
+| GET | `/api/me/data` | 내 데이터 JSON 내려받기 |
 | GET/POST | `/api/subscriptions/{id}/shares` | 공유 멤버 목록/추가 |
 | PUT | `/api/shares/{id}/settlement` | 소유자 정산 확인 |
 | POST | `/api/shares/{id}/accept` | 공유 초대 수락 |
@@ -163,6 +166,7 @@ Flyway를 사용합니다. (`src/main/resources/db/migration`)
 - `/privacy` 개인정보 처리방침, `/terms` 이용약관
 - 동의 기록은 종류·문서 버전·시각과 함께 저장합니다.
 - `DELETE /api/me`로 탈퇴하면 구독·결제·공유·정산·동의·사용자 데이터를 순서대로 파기합니다.
+- `/settings`에서 마케팅·알림 동의를 변경하고, 내 데이터를 JSON으로 내려받을 수 있습니다.
 
 소유자는 `subscriptions.owner_email` 로 구분합니다. 모든 조회·수정·삭제는 현재 로그인 사용자의 이메일로 제한됩니다.
 공유 구독 멤버와 정산 기록도 구독 소유자만 조회·변경할 수 있습니다.

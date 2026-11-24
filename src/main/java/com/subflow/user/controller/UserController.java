@@ -2,16 +2,20 @@ package com.subflow.user.controller;
 
 import com.subflow.global.auth.CurrentUserProvider;
 import com.subflow.user.dto.AccountDeleteRequest;
+import com.subflow.user.dto.ConsentUpdateRequest;
+import com.subflow.user.dto.DataExportResponse;
 import com.subflow.user.dto.OnboardingRequest;
 import com.subflow.user.dto.ProfileResponse;
 import com.subflow.user.dto.ProfileUpdateRequest;
 import com.subflow.user.service.AccountDeletionService;
+import com.subflow.user.service.DataExportService;
 import com.subflow.user.service.UserService;
 import com.subflow.global.exception.BusinessException;
 import com.subflow.global.exception.ErrorCode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -30,6 +34,7 @@ public class UserController {
 
     private final UserService userService;
     private final AccountDeletionService accountDeletionService;
+    private final DataExportService dataExportService;
     private final CurrentUserProvider currentUserProvider;
 
     @GetMapping
@@ -45,6 +50,19 @@ public class UserController {
     @PutMapping
     public ProfileResponse updateProfile(@Valid @RequestBody ProfileUpdateRequest request) {
         return userService.updateProfile(currentUserProvider.getCurrentUserEmail(), request);
+    }
+
+    @PutMapping("/consents")
+    public ProfileResponse updateConsent(@Valid @RequestBody ConsentUpdateRequest request) {
+        return userService.updateConsent(currentUserProvider.getCurrentUserEmail(), request);
+    }
+
+    @GetMapping("/data")
+    public ResponseEntity<DataExportResponse> exportData() {
+        DataExportResponse data = dataExportService.export(currentUserProvider.getCurrentUserEmail());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"subflow-data.json\"")
+                .body(data);
     }
 
     @DeleteMapping
