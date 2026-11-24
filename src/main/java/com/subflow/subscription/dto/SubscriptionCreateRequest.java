@@ -4,11 +4,13 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.subflow.subscription.domain.BillingCycle;
 import com.subflow.subscription.domain.Category;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PositiveOrZero;
+import jakarta.validation.constraints.Size;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -19,6 +21,7 @@ import java.time.LocalDate;
 public class SubscriptionCreateRequest {
 
     @NotBlank(message = "서비스명을 입력해 주세요.")
+    @Size(max = 100, message = "서비스명은 100자 이하여야 합니다.")
     private final String serviceName;
 
     @NotNull(message = "카테고리를 선택해 주세요.")
@@ -26,6 +29,7 @@ public class SubscriptionCreateRequest {
 
     @NotNull(message = "구독료를 입력해 주세요.")
     @PositiveOrZero(message = "구독료는 0원 이상이어야 합니다.")
+    @Digits(integer = 10, fraction = 2, message = "구독료 형식이 올바르지 않습니다.")
     private final BigDecimal fee;
 
     @NotNull(message = "결제 주기를 선택해 주세요.")
@@ -41,6 +45,7 @@ public class SubscriptionCreateRequest {
     @Max(value = 30, message = "알림 설정일은 30일 이하여야 합니다.")
     private final Integer remindDaysBefore;
 
+    @Size(max = 2000, message = "메모는 2000자 이하여야 합니다.")
     private final String memo;
 
     @Builder

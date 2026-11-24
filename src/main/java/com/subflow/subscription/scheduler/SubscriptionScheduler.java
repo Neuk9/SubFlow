@@ -66,10 +66,13 @@ public class SubscriptionScheduler {
                         recorded++;
                     }
 
+                    Integer cycleAnchorDay = sub.getBillingCycle() == com.subflow.subscription.domain.BillingCycle.YEARLY
+                            ? sub.getStartDate().getDayOfMonth()
+                            : sub.getBillingDay();
                     LocalDate nextCycleDate = billingDateCalculator.calculateNextCycleDate(
                             sub.getBillingCycle(),
                             sub.getNextBillingDate(),
-                            sub.getBillingDay()
+                            cycleAnchorDay
                     );
 
                     if (!nextCycleDate.isAfter(sub.getNextBillingDate())) {

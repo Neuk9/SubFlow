@@ -57,7 +57,7 @@ public final class ValueParser {
         if (value.startsWith("-") || value.startsWith("+")) {
             value = value.substring(1);
         }
-        if (value.isEmpty()) {
+        if (!value.matches("\\d{1,15}(\\.\\d{1,4})?")) {
             return Optional.empty();
         }
         try {

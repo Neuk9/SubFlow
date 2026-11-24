@@ -103,4 +103,45 @@ class SubscriptionStateTest {
         assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
         assertThat(subscription.getNextBillingDate()).isEqualTo(next);
     }
+
+    @Test
+    @DisplayName("해지 예약된 구독을 재개하면 해지 예정일이 초기화된다")
+    void resumeClearsCancellationScheduledAt() {
+        Subscription subscription = Subscription.builder()
+                .serviceName("유튜브")
+                .category(Category.OTT)
+                .fee(BigDecimal.valueOf(14900))
+                .billingCycle(BillingCycle.MONTHLY)
+                .billingDay(10)
+                .startDate(LocalDate.now().minusMonths(1))
+                .nextBillingDate(LocalDate.now().plusDays(5))
+                .monthlyExpense(BigDecimal.valueOf(14900))
+                .build();
+        subscription.scheduleCancellation(LocalDate.now().plusDays(10));
+
+        subscription.resume(LocalDate.now().plusDays(15));
+
+        assertThat(subscription.getStatus()).isEqualTo(SubscriptionStatus.ACTIVE);
+        assertThat(subscription.getCancellationScheduledAt()).isNull();
+    }
+
+    @Test
+    @DisplayName("이미 이용 중인 구독은 재개할 수 없다")
+    void activeCannotResume() {
+        Subscription subscription = Subscription.builder()
+                .serviceName("넷플릭스")
+                .category(Category.OTT)
+                .fee(BigDecimal.valueOf(17000))
+                .billingCycle(BillingCycle.MONTHLY)
+                .billingDay(25)
+                .startDate(LocalDate.now().minusMonths(1))
+                .nextBillingDate(LocalDate.now().plusMonths(1))
+                .monthlyExpense(BigDecimal.valueOf(17000))
+                .build();
+
+        assertThatThrownBy(() -> subscription.resume(LocalDate.now()))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+    }
 }

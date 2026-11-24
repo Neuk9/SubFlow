@@ -103,6 +103,6 @@ public class DataExportService {
                 subscriptionResponses,
                 billingRecords,
                 ownedShares,
-                shareService.getSharedWithMe(period));
+                shareService.getSharedWithMe(email, period));
     }
 }

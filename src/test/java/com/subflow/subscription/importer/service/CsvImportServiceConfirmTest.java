@@ -43,7 +43,7 @@ class CsvImportServiceConfirmTest {
 
     private static final String OWNER = "me@example.com";
     private static final LocalDate DATE = LocalDate.of(2026, 9, 25);
-    private static final BigDecimal AMOUNT = new BigDecimal("17000");
+    private static final BigDecimal AMOUNT = new BigDecimal("17000.00");
 
     @Mock
     private SubscriptionRepository subscriptionRepository;
@@ -161,6 +161,18 @@ class CsvImportServiceConfirmTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.SUBSCRIPTION_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("신규 구독 목록에 null 요소가 있으면 INVALID_IMPORT_ROW를 던진다")
+    void rejectsNullNewSubscriptionElement() {
+        List<SubscriptionCreateRequest> listWithNull = new java.util.ArrayList<>();
+        listWithNull.add(null);
+
+        assertThatThrownBy(() -> service.confirm(new ImportConfirmRequest(List.of(), listWithNull)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_IMPORT_ROW);
     }
 
     private void givenOwner(Subscription subscription) {

@@ -17,12 +17,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Year;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.time.Year;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -63,6 +64,7 @@ public class InsightService {
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionFinder subscriptionFinder;
     private final CurrentUserProvider currentUserProvider;
+    private final Clock clock;
 
     public InsightResponse getInsights() {
         String ownerEmail = subscriptionFinder.currentOwnerEmail();
@@ -111,6 +113,9 @@ public class InsightService {
 
     private Optional<InsightResponse.AnnualSaving> annualSaving(Subscription subscription,
                                                                 ServiceCatalogResponse service) {
+        if (subscription.getBillingCycle() == BillingCycle.YEARLY) {
+            return Optional.empty();
+        }
         Optional<ServicePlanResponse> yearly = service.getPlans().stream()
                 .filter(plan -> plan.getBillingCycle() == BillingCycle.YEARLY)
                 .findFirst();
@@ -198,6 +203,9 @@ public class InsightService {
             if (familyPlan.isEmpty()) {
                 continue;
             }
+            if (isAlreadyGroupPlan(subscription, familyPlan.get())) {
+                continue;
+            }
             BigDecimal individualTotal = subscription.getMonthlyExpense()
                     .multiply(BigDecimal.valueOf(householdSize));
             BigDecimal saving = individualTotal.subtract(familyPlan.get().getFee());
@@ -214,11 +222,24 @@ public class InsightService {
         }
     }
 
+    private boolean isAlreadyGroupPlan(Subscription subscription, ServicePlanResponse familyPlan) {
+        String normalizedName = normalize(subscription.getServiceName());
+        if (normalizedName.contains("패밀리")
+                || normalizedName.contains("가족")
+                || normalizedName.contains("family")
+                || normalizedName.contains("듀오")
+                || normalizedName.contains("duo")) {
+            return true;
+        }
+        return subscription.getMonthlyExpense() != null
+                && subscription.getMonthlyExpense().compareTo(familyPlan.getFee()) >= 0;
+    }
+
     private void addYouthBenefit(User user, List<InsightResponse.BenefitRecommendation> benefits) {
         if (user.getBirthYear() == null) {
             return;
         }
-        int age = Year.now().getValue() - user.getBirthYear();
+        int age = Year.now(clock).getValue() - user.getBirthYear();
         if (age >= 19 && age <= 34) {
             benefits.add(new InsightResponse.BenefitRecommendation(
                     "YOUTH",
@@ -283,8 +304,32 @@ public class InsightService {
             return Optional.empty();
         }
         return ServiceCatalog.services().stream()
-                .filter(service -> normalized.contains(normalize(service.getName())))
-                .max(Comparator.comparingInt(service -> normalize(service.getName()).length()));
+                .map(service -> Map.entry(service, bestMatchLength(normalized, service)))
+                .filter(entry -> entry.getValue() > 0)
+                .max(Comparator.comparingInt(Map.Entry::getValue))
+                .map(Map.Entry::getKey);
+    }
+
+    private int bestMatchLength(String normalizedTarget, ServiceCatalogResponse service) {
+        int best = matchTokenLength(normalizedTarget, normalize(service.getName()), false);
+        best = Math.max(best, matchTokenLength(normalizedTarget, normalize(service.getId()), true));
+        for (ServicePlanResponse plan : service.getPlans()) {
+            best = Math.max(best, matchTokenLength(normalizedTarget, normalize(plan.getDisplayName()), false));
+        }
+        return best;
+    }
+
+    private int matchTokenLength(String target, String token, boolean requireLongOrExact) {
+        if (token.isEmpty()) {
+            return 0;
+        }
+        if (target.equals(token)) {
+            return token.length();
+        }
+        if (requireLongOrExact && token.length() < 4) {
+            return 0;
+        }
+        return target.contains(token) ? token.length() : 0;
     }
 
     private BigDecimal sum(List<BigDecimal> values) {

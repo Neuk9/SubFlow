@@ -80,6 +80,22 @@ class CandidateFinderTest {
         assertThat(finder.find(rows, List.of())).isEmpty();
     }
 
+    @Test
+    @DisplayName("해지된 구독과 같은 브랜드라도 반복 결제가 있으면 신규 후보로 제안한다")
+    void includesReSubscribedCanceledBrand() {
+        List<ParsedPayment> rows = List.of(
+                payment(2, "2026-08-15", "티빙", "9900"),
+                payment(3, "2026-09-15", "티빙", "9900"));
+        Subscription canceled = subscription(1L, "티빙 스탠다드", "9900");
+        canceled.cancelImmediately(LocalDate.of(2026, 7, 1));
+
+        List<ImportCandidate> result = finder.find(rows, List.of(canceled));
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).logoSlug()).isEqualTo("tving");
+        assertThat(result.get(0).logoImage()).isTrue();
+    }
+
     private ParsedPayment payment(int rowNumber, String date, String merchant, String amount) {
         return new ParsedPayment(rowNumber, LocalDate.parse(date), merchant, new BigDecimal(amount));
     }

@@ -41,6 +41,19 @@ class OnboardingInterceptorTest {
     }
 
     @Test
+    @DisplayName("온보딩 미완료 사용자가 API를 호출하면 403 JSON을 반환한다")
+    void returnsForbiddenForIncompleteUserOnApi() throws Exception {
+        OnboardingInterceptor interceptor = new OnboardingInterceptor(true, currentUserProvider);
+        given(currentUserProvider.findCurrentUser()).willReturn(Optional.of(user(false)));
+
+        boolean allowed = interceptor.preHandle(request("/api/subscriptions"), response, new Object());
+
+        assertThat(allowed).isFalse();
+        assertThat(response.getStatus()).isEqualTo(403);
+        assertThat(response.getContentAsString()).contains("ONBOARDING_REQUIRED");
+    }
+
+    @Test
     @DisplayName("온보딩 완료 사용자는 통과한다")
     void allowsCompletedUser() throws Exception {
         OnboardingInterceptor interceptor = new OnboardingInterceptor(true, currentUserProvider);

@@ -14,9 +14,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.Year;
 import java.util.List;
@@ -39,6 +41,9 @@ class InsightServiceTest {
 
     @Mock
     private CurrentUserProvider currentUserProvider;
+
+    @Spy
+    private Clock clock = Clock.systemDefaultZone();
 
     @InjectMocks
     private InsightService insightService;
@@ -127,6 +132,50 @@ class InsightServiceTest {
         givenOwner((User) null, subscription("유튜브 프리미엄", "14900"));
 
         assertThat(insightService.getInsights().benefits()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("이미 연간 구독 중이면 연간 전환 절약을 추천하지 않는다")
+    void skipsAnnualSavingForYearlySubscription() {
+        Subscription yearly = Subscription.builder()
+                .serviceName("Microsoft 365 Personal (연간)")
+                .category(Category.PRODUCTIVITY)
+                .fee(new BigDecimal("119000"))
+                .billingCycle(BillingCycle.YEARLY)
+                .startDate(LocalDate.of(2026, 1, 1))
+                .nextBillingDate(LocalDate.of(2027, 1, 1))
+                .monthlyExpense(new BigDecimal("9917"))
+                .build();
+        givenOwner(yearly);
+
+        assertThat(insightService.getInsights().annualSavings()).isEmpty();
+    }
+
+    @Test
+    @DisplayName("이미 가족 요금제를 이용 중이면 가족 요금제를 다시 추천하지 않는다")
+    void skipsFamilyPlanWhenAlreadySubscribed() {
+        givenOwner(user(2002, Occupation.UNIVERSITY, 3, Set.of()),
+                subscription("유튜브 프리미엄 패밀리", "22900"));
+
+        assertThat(insightService.getInsights().benefits())
+                .filteredOn(benefit -> benefit.code().equals("FAMILY_PLAN"))
+                .isEmpty();
+    }
+
+    @Test
+    @DisplayName("카탈로그 요금제 표시명(Adobe All Apps, Google AI Pro)도 인사이트에 매칭된다")
+    void matchesPlanDisplayNamesInCatalog() {
+        givenOwner(
+                subscription("Adobe All Apps", "62000"),
+                subscription("Google AI Pro", "29000"),
+                subscription("ChatGPT Plus", "29000"));
+
+        InsightResponse response = insightService.getInsights();
+
+        assertThat(response.annualSavings()).extracting(InsightResponse.AnnualSaving::serviceName)
+                .contains("Adobe Creative Cloud");
+        assertThat(response.duplicateGroups()).extracting(InsightResponse.DuplicateGroup::group)
+                .contains("AI 어시스턴트");
     }
 
     @Test

@@ -5,6 +5,7 @@ import com.subflow.user.domain.Membership;
 import com.subflow.user.domain.Occupation;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 
 import java.util.Set;
 
@@ -18,7 +19,7 @@ public record ProfileUpdateRequest(
         @Max(value = 10, message = "가구원 수는 10명 이하여야 합니다.")
         Integer householdSize,
 
-        Set<Category> interests,
-        Set<Membership> memberships
+        Set<@NotNull Category> interests,
+        Set<@NotNull Membership> memberships
 ) {
 }

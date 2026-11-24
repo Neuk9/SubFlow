@@ -252,7 +252,9 @@ async function updatePreview() {
 
         document.getElementById('previewNextBilling').innerText = data.nextBillingDate;
         document.getElementById('previewMonthlyExpense').innerText = Number(data.monthlyExpense).toLocaleString();
-        document.getElementById('previewDDay').innerText = `D-${data.dDay}`;
+        const dDay = Number(data.dDay);
+        document.getElementById('previewDDay').innerText =
+            dDay === 0 ? 'D-Day' : dDay > 0 ? `D-${dDay}` : `D+${Math.abs(dDay)}`;
     } catch (e) {
         console.error(e);
     }
@@ -304,14 +306,8 @@ async function submitSubscription() {
             return;
         }
 
-        let message = '입력값을 확인해 주세요.';
-        try {
-            const err = await res.json();
-            message = err.message || message;
-        } catch (e) {
-            // JSON이 아닌 응답은 기본 메시지 사용
-        }
-        showToast('등록 실패: ' + message, 'danger');
+        const err = await res.json().catch(() => ({}));
+        showToast('등록 실패: ' + extractErrorMessage(err, '입력값을 확인해 주세요.'), 'danger');
     } catch (e) {
         showToast('네트워크 오류로 등록에 실패했습니다.', 'danger');
     } finally {
@@ -398,14 +394,8 @@ async function submitCancel() {
         });
 
         if (!res.ok) {
-            let message = '해지 처리에 실패했습니다.';
-            try {
-                const error = await res.json();
-                message = error.message || message;
-            } catch (e) {
-                // 응답 본문이 JSON이 아닌 경우 기본 메시지 사용
-            }
-            showError(message);
+            const error = await res.json().catch(() => ({}));
+            showError(extractErrorMessage(error, '해지 처리에 실패했습니다.'));
             return;
         }
 
@@ -461,16 +451,30 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+function extractErrorMessage(error, fallback) {
+    if (error && Array.isArray(error.errors) && error.errors.length > 0 && error.errors[0].reason) {
+        return error.errors[0].reason;
+    }
+    return (error && error.message) || fallback;
+}
+
 async function loadLogs() {
+    const container = document.getElementById('logsContainer');
+    if (!container) return;
     try {
         const [notifRes, recordRes] = await Promise.all([
             fetch('/api/simulation/notifications'),
             fetch('/api/simulation/records')
         ]);
+        if (!notifRes.ok || !recordRes.ok) {
+            return;
+        }
         const notifs = await notifRes.json();
         const records = await recordRes.json();
+        if (!Array.isArray(notifs) || !Array.isArray(records)) {
+            return;
+        }
 
-        const container = document.getElementById('logsContainer');
         if (notifs.length === 0 && records.length === 0) {
             return;
         }
@@ -627,12 +631,18 @@ function formatWon(value) {
 async function loadShared() {
     try {
         const res = await fetch(`/api/shares/shared?period=${currentPeriod()}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+            throw new Error('공유 구독을 불러오지 못했습니다.');
+        }
         const shares = await res.json();
         renderInvitations(shares.filter(share => share.status === 'PENDING'));
         renderActiveShares(shares.filter(share => share.status === 'ACTIVE'));
     } catch (e) {
         console.error('공유 구독을 불러오지 못했습니다.', e);
+        const invBox = document.getElementById('shareInvitations');
+        const activeBox = document.getElementById('shareActive');
+        if (invBox) invBox.innerHTML = '<div class="sf-empty-line">공유 구독을 불러오지 못했습니다.</div>';
+        if (activeBox) activeBox.innerHTML = '<div class="sf-empty-line">공유 구독을 불러오지 못했습니다.</div>';
     }
 }
 
@@ -676,23 +686,54 @@ function renderActiveShares(shares) {
 }
 
 async function acceptInvitation(shareId) {
-    await fetch(`/api/shares/${shareId}/accept`, { method: 'POST' });
-    await loadShared();
+    try {
+        const res = await fetch(`/api/shares/${shareId}/accept`, { method: 'POST' });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            showToast(extractErrorMessage(err, '초대를 수락하지 못했습니다.'), 'danger');
+            return;
+        }
+        showToast('초대를 수락했습니다.', 'success');
+    } catch (e) {
+        showToast('네트워크 오류로 초대를 수락하지 못했습니다.', 'danger');
+    } finally {
+        await loadShared();
+    }
 }
 
 async function declineInvitation(shareId) {
     if (!confirm('초대를 거절할까요?')) return;
-    await fetch(`/api/shares/${shareId}/decline`, { method: 'POST' });
-    await loadShared();
+    try {
+        const res = await fetch(`/api/shares/${shareId}/decline`, { method: 'POST' });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            showToast(extractErrorMessage(err, '초대를 거절하지 못했습니다.'), 'danger');
+            return;
+        }
+        showToast('초대를 거절했습니다.', 'secondary');
+    } catch (e) {
+        showToast('네트워크 오류로 초대를 거절하지 못했습니다.', 'danger');
+    } finally {
+        await loadShared();
+    }
 }
 
 async function toggleMyPayment(shareId, paid) {
-    await fetch(`/api/shares/${shareId}/payment`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ period: currentPeriod(), paid })
-    });
-    await loadShared();
+    try {
+        const res = await fetch(`/api/shares/${shareId}/payment`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ period: currentPeriod(), paid })
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            showToast(extractErrorMessage(err, '송금 상태를 저장하지 못했습니다.'), 'danger');
+        }
+    } catch (e) {
+        showToast('네트워크 오류로 송금 상태를 저장하지 못했습니다.', 'danger');
+    } finally {
+        await loadShared();
+    }
 }
 
 /* --------------------------------------------------------------------------
@@ -703,12 +744,28 @@ function normalizeServiceName(value) {
     return String(value || '').toLowerCase().replace(/[\s\-_/()+.]+/g, '');
 }
 
+function catalogMatchScore(target, service) {
+    const scoreToken = (token, requireLongOrExact) => {
+        if (!token) return 0;
+        if (target === token) return token.length;
+        if (requireLongOrExact && token.length < 4) return 0;
+        return target.includes(token) ? token.length : 0;
+    };
+    let best = scoreToken(normalizeServiceName(service.name), false);
+    best = Math.max(best, scoreToken(normalizeServiceName(service.id), true));
+    (service.plans || []).forEach(plan => {
+        best = Math.max(best, scoreToken(normalizeServiceName(plan.displayName), false));
+    });
+    return best;
+}
+
 function findCatalogService(serviceName) {
     const target = normalizeServiceName(serviceName);
     if (!target) return null;
     return serviceCatalog
-        .filter(service => target.includes(normalizeServiceName(service.name)))
-        .sort((a, b) => b.name.length - a.name.length)[0] || null;
+        .map(service => ({ service, score: catalogMatchScore(target, service) }))
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score)[0]?.service || null;
 }
 
 async function renderInsights() {
@@ -718,7 +775,9 @@ async function renderInsights() {
 
     try {
         const res = await fetch('/api/insights');
-        if (!res.ok) return;
+        if (!res.ok) {
+            throw new Error('인사이트를 불러오지 못했습니다.');
+        }
         const data = await res.json();
 
         const items = [];
@@ -789,6 +848,10 @@ async function renderInsights() {
                 </div>`).join('');
     } catch (e) {
         console.error('인사이트를 불러오지 못했습니다.', e);
+        savingsBox.innerHTML = '<div class="sf-empty-line">인사이트를 불러오지 못했습니다.</div>';
+        duplicatesBox.innerHTML = '<div class="sf-empty-line">인사이트를 불러오지 못했습니다.</div>';
+        const benefitsBox = document.getElementById('insightBenefits');
+        if (benefitsBox) benefitsBox.innerHTML = '<div class="sf-empty-line">혜택 정보를 불러오지 못했습니다.</div>';
     }
 }
 
@@ -826,6 +889,9 @@ function openShareModal(button) {
     document.getElementById('shareServiceName').textContent = button.dataset.name || '';
     document.getElementById('shareMemberName').value = '';
     document.getElementById('shareAmount').value = '';
+    document.getElementById('shareMemberEmail').value = '';
+    document.getElementById('shareReceived').textContent = '0원';
+    document.getElementById('sharePending').textContent = '0원';
     document.getElementById('shareError').classList.add('d-none');
     document.getElementById('shareList').innerHTML = '<div class="sf-empty-line">불러오는 중…</div>';
     loadShares();
@@ -836,10 +902,13 @@ async function loadShares() {
     if (!shareState.subscriptionId) return;
     try {
         const res = await fetch(`/api/subscriptions/${shareState.subscriptionId}/shares?period=${shareState.period}`);
-        if (!res.ok) return;
+        if (!res.ok) {
+            throw new Error('공유 멤버를 불러오지 못했습니다.');
+        }
         renderShares(await res.json());
     } catch (e) {
         console.error('공유 멤버를 불러오지 못했습니다.', e);
+        document.getElementById('shareList').innerHTML = '<div class="sf-empty-line">공유 멤버를 불러오지 못했습니다.</div>';
     }
 }
 
@@ -913,7 +982,7 @@ async function addShare(event) {
         });
         if (!res.ok) {
             const error = await res.json().catch(() => ({}));
-            showShareError(error.message || '멤버를 추가하지 못했습니다.');
+            showShareError(extractErrorMessage(error, '멤버를 추가하지 못했습니다.'));
             return;
         }
         document.getElementById('shareMemberName').value = '';
@@ -926,18 +995,38 @@ async function addShare(event) {
 }
 
 async function toggleShareSettle(shareId, settled) {
-    await fetch(`/api/shares/${shareId}/settlement`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ period: shareState.period, settled })
-    });
-    await loadShares();
+    document.getElementById('shareError').classList.add('d-none');
+    try {
+        const res = await fetch(`/api/shares/${shareId}/settlement`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ period: shareState.period, settled })
+        });
+        if (!res.ok) {
+            const error = await res.json().catch(() => ({}));
+            showShareError(extractErrorMessage(error, '정산 상태를 변경하지 못했습니다.'));
+        }
+    } catch (e) {
+        showShareError('네트워크 오류로 정산 상태를 변경하지 못했습니다.');
+    } finally {
+        await loadShares();
+    }
 }
 
 async function removeShare(shareId) {
     if (!confirm('이 멤버를 삭제할까요?')) return;
-    await fetch(`/api/shares/${shareId}`, { method: 'DELETE' });
-    await loadShares();
+    document.getElementById('shareError').classList.add('d-none');
+    try {
+        const res = await fetch(`/api/shares/${shareId}`, { method: 'DELETE' });
+        if (!res.ok) {
+            const error = await res.json().catch(() => ({}));
+            showShareError(extractErrorMessage(error, '멤버를 삭제하지 못했습니다.'));
+        }
+    } catch (e) {
+        showShareError('네트워크 오류로 멤버를 삭제하지 못했습니다.');
+    } finally {
+        await loadShares();
+    }
 }
 
 /* --------------------------------------------------------------------------
@@ -1172,10 +1261,11 @@ async function previewImport(useMapping = false) {
     setImportLoading(true);
     try {
         const res = await fetch('/api/imports/preview', { method: 'POST', body: form });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || '파일을 분석하지 못했습니다.');
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(extractErrorMessage(data, '파일을 분석하지 못했습니다.'));
         importState.preview = data;
 
+        document.getElementById('importStep1').classList.add('d-none');
         document.getElementById('importStep2').classList.remove('d-none');
         if (data.needsMapping) {
             renderImportMapping(data);
@@ -1257,10 +1347,7 @@ function renderImportPreview(data) {
             ${candidates.map((candidate, index) => `
                 <label class="sf-candidate">
                     <input type="checkbox" class="form-check-input import-candidate-check" data-index="${index}" checked>
-                    <div class="sf-candidate-logo ${candidate.logoSlug ? '' : 'is-fallback'}"
-                         ${candidate.logoSlug ? `style="--logo:url('/logos/${encodeURIComponent(candidate.logoSlug)}.svg')"` : ''}>
-                        ${candidate.logoSlug ? '' : escapeHtml(Array.from(candidate.suggestedName)[0] || '?')}
-                    </div>
+                    ${candidateLogoHtml(candidate)}
                     <div class="sf-candidate-main">
                         <div class="sf-candidate-name">${escapeHtml(candidate.suggestedName)}</div>
                         <div class="sf-candidate-meta">
@@ -1284,6 +1371,16 @@ function renderImportPreview(data) {
             skipped.slice(0, 5).map(item => `${item.rowNumber}행(${item.reason})`).join(', ') +
             (skipped.length > 5 ? ' 외' : '');
     }
+}
+
+function candidateLogoHtml(candidate) {
+    if (candidate.logoSlug) {
+        if (candidate.logoImage) {
+            return `<div class="sf-candidate-logo is-image"><img class="sf-service-img" src="/logos/${encodeURIComponent(candidate.logoSlug)}.png" alt=""></div>`;
+        }
+        return `<div class="sf-candidate-logo" style="--logo:url('/logos/${encodeURIComponent(candidate.logoSlug)}.svg')"></div>`;
+    }
+    return `<div class="sf-candidate-logo is-fallback">${escapeHtml(Array.from(candidate.suggestedName || '')[0] || '?')}</div>`;
 }
 
 function toggleAllImportRows(checked) {
@@ -1330,10 +1427,11 @@ async function confirmImport() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ records, newSubscriptions })
         });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.message || '가져오기에 실패했습니다.');
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(extractErrorMessage(data, '가져오기에 실패했습니다.'));
 
         importState.done = true;
+        document.getElementById('importStep1').classList.add('d-none');
         document.getElementById('importStep2').classList.add('d-none');
         document.getElementById('importStep3').classList.remove('d-none');
         document.getElementById('importPreviewBtn').classList.add('d-none');

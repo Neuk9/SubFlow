@@ -59,7 +59,8 @@ public class BillingDateCalculator {
             }
             case YEARLY -> {
                 int targetYear = currentBillingDate.getYear() + 1;
-                yield adjustYearlyDate(currentBillingDate.getMonthValue(), currentBillingDate.getDayOfMonth(), targetYear);
+                int anchorDay = (billingDay != null) ? billingDay : currentBillingDate.getDayOfMonth();
+                yield adjustYearlyDate(currentBillingDate.getMonthValue(), anchorDay, targetYear);
             }
             case WEEKLY -> currentBillingDate.plusWeeks(1);
         };

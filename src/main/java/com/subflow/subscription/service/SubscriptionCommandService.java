@@ -6,11 +6,16 @@ import com.subflow.subscription.calculator.BillingDateCalculator;
 import com.subflow.subscription.calculator.ExpenseCalculator;
 import com.subflow.subscription.domain.BillingCycle;
 import com.subflow.subscription.domain.Subscription;
+import com.subflow.subscription.domain.SubscriptionShare;
 import com.subflow.subscription.dto.SubscriptionCancelRequest;
 import com.subflow.subscription.dto.SubscriptionCreateRequest;
 import com.subflow.subscription.dto.SubscriptionResponse;
 import com.subflow.subscription.dto.SubscriptionUpdateRequest;
+import com.subflow.subscription.repository.BillingRecordRepository;
+import com.subflow.subscription.repository.NotificationHistoryRepository;
+import com.subflow.subscription.repository.SettlementRecordRepository;
 import com.subflow.subscription.repository.SubscriptionRepository;
+import com.subflow.subscription.repository.SubscriptionShareRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -28,6 +33,10 @@ import java.util.Objects;
 public class SubscriptionCommandService {
 
     private final SubscriptionRepository subscriptionRepository;
+    private final BillingRecordRepository billingRecordRepository;
+    private final NotificationHistoryRepository notificationHistoryRepository;
+    private final SubscriptionShareRepository shareRepository;
+    private final SettlementRecordRepository settlementRepository;
     private final SubscriptionFinder subscriptionFinder;
     private final BillingDateCalculator billingDateCalculator;
     private final ExpenseCalculator expenseCalculator;
@@ -86,15 +95,12 @@ public class SubscriptionCommandService {
 
         LocalDate nextBillingDate = subscription.getNextBillingDate();
         if (scheduleChanged) {
-            LocalDate recalculated = billingDateCalculator.calculateNextBillingDate(
+            nextBillingDate = billingDateCalculator.calculateNextBillingDate(
                     request.getBillingCycle(),
                     subscription.getStartDate(),
                     billingDay,
                     today
             );
-            if (!recalculated.isBefore(subscription.getNextBillingDate())) {
-                nextBillingDate = recalculated;
-            }
         }
 
         BigDecimal monthlyExpense = expenseCalculator.calculateMonthlyExpense(
@@ -122,6 +128,13 @@ public class SubscriptionCommandService {
 
     public void deleteSubscription(Long id) {
         Subscription subscription = subscriptionFinder.findOwnedById(id);
+        Long subscriptionId = subscription.getId();
+        notificationHistoryRepository.deleteAllBySubscriptionId(subscriptionId);
+        billingRecordRepository.deleteAllBySubscriptionId(subscriptionId);
+        for (SubscriptionShare share : shareRepository.findAllBySubscriptionIdOrderByIdAsc(subscriptionId)) {
+            settlementRepository.deleteAllByShareId(share.getId());
+        }
+        shareRepository.deleteAllBySubscriptionId(subscriptionId);
         subscriptionRepository.delete(subscription);
         log.info("구독 삭제 완료 - ID: {}", id);
     }
@@ -131,7 +144,10 @@ public class SubscriptionCommandService {
         LocalDate today = LocalDate.now(clock);
 
         if (request != null && request.getScheduledDate() != null) {
-            if (request.getScheduledDate().isEqual(today) || request.getScheduledDate().isBefore(today)) {
+            if (request.getScheduledDate().isBefore(today)) {
+                throw new BusinessException(ErrorCode.INVALID_DATE_RANGE, "해지 예정일은 오늘 이후여야 합니다.");
+            }
+            if (request.getScheduledDate().isEqual(today)) {
                 subscription.cancelImmediately(today);
             } else {
                 subscription.scheduleCancellation(request.getScheduledDate(), today);

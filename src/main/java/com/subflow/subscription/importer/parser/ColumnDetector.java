@@ -1,8 +1,6 @@
 package com.subflow.subscription.importer.parser;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * 헤더 키워드 또는 값 패턴으로 날짜·가맹점·금액 컬럼을 찾는다.
@@ -62,8 +60,10 @@ public class ColumnDetector {
         if (date < 0 || merchant < 0 || resolvedAmount < 0) {
             return null;
         }
-        Set<Integer> distinct = new HashSet<>(Set.of(date, merchant, resolvedAmount));
-        return distinct.size() == 3 ? new ColumnMapping(date, merchant, resolvedAmount) : null;
+        if (date == merchant || date == resolvedAmount || merchant == resolvedAmount) {
+            return null;
+        }
+        return new ColumnMapping(date, merchant, resolvedAmount);
     }
 
     private ColumnMapping infer(List<CsvRow> rows) {

@@ -6,6 +6,7 @@ import com.subflow.subscription.domain.SettlementRecord;
 import com.subflow.subscription.domain.Subscription;
 import com.subflow.subscription.domain.SubscriptionShare;
 import com.subflow.subscription.domain.ShareStatus;
+import com.subflow.subscription.domain.SubscriptionStatus;
 import com.subflow.subscription.dto.MemberShareResponse;
 import com.subflow.subscription.dto.ShareCreateRequest;
 import com.subflow.subscription.dto.SharePaymentRequest;
@@ -53,8 +54,14 @@ public class SubscriptionShareService {
     @Transactional
     public ShareResponse addShare(Long subscriptionId, ShareCreateRequest request) {
         Subscription subscription = subscriptionFinder.findOwnedById(subscriptionId);
+        if (subscription.getStatus() == SubscriptionStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.ALREADY_CANCELED);
+        }
         String memberName = request.memberName().trim();
         String memberEmail = normalizeEmail(request.memberEmail());
+        if (memberEmail != null && memberEmail.equalsIgnoreCase(subscription.getOwnerEmail())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "본인 이메일은 초대할 수 없습니다.");
+        }
         if (shareRepository.existsBySubscriptionIdAndMemberNameIgnoreCase(subscriptionId, memberName)) {
             throw new BusinessException(ErrorCode.DUPLICATE_SHARE_MEMBER);
         }
@@ -75,6 +82,9 @@ public class SubscriptionShareService {
     @Transactional
     public void acceptInvitation(Long shareId) {
         SubscriptionShare share = findMemberShare(shareId);
+        if (share.getSubscription().getStatus() == SubscriptionStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.ALREADY_CANCELED);
+        }
         if (share.getStatus() != ShareStatus.PENDING) {
             throw new BusinessException(ErrorCode.INVALID_SHARE_STATUS);
         }
@@ -93,6 +103,9 @@ public class SubscriptionShareService {
     @Transactional
     public void markPayment(Long shareId, SharePaymentRequest request) {
         SubscriptionShare share = findMemberShare(shareId);
+        if (share.getSubscription().getStatus() == SubscriptionStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.ALREADY_CANCELED);
+        }
         if (share.getStatus() != ShareStatus.ACTIVE) {
             throw new BusinessException(ErrorCode.INVALID_SHARE_STATUS);
         }
@@ -102,6 +115,9 @@ public class SubscriptionShareService {
                         .share(share)
                         .period(request.period())
                         .build());
+        if (!request.paid() && record.isSettled()) {
+            throw new BusinessException(ErrorCode.INVALID_SHARE_STATUS, "이미 정산 확인된 내역은 송금을 취소할 수 없습니다.");
+        }
         if (request.paid()) {
             record.markPaid(LocalDate.now(clock));
         } else {
@@ -111,12 +127,16 @@ public class SubscriptionShareService {
     }
 
     public List<MemberShareResponse> getSharedWithMe(String period) {
+        return getSharedWithMe(subscriptionFinder.currentOwnerEmail(), period);
+    }
+
+    public List<MemberShareResponse> getSharedWithMe(String email, String period) {
         String resolvedPeriod = resolvePeriod(period);
-        String email = subscriptionFinder.currentOwnerEmail();
         List<SubscriptionShare> shares = shareRepository
                 .findAllByMemberEmailIgnoreCaseOrderByIdAsc(email).stream()
                 .filter(share -> share.getStatus() == ShareStatus.PENDING
                         || share.getStatus() == ShareStatus.ACTIVE)
+                .filter(share -> share.getSubscription().getStatus() != SubscriptionStatus.CANCELED)
                 .toList();
         Map<Long, SettlementRecord> records = recordsByShareId(shares, resolvedPeriod);
         return shares.stream()
@@ -136,12 +156,19 @@ public class SubscriptionShareService {
     @Transactional
     public void removeShare(Long shareId) {
         SubscriptionShare share = findOwnedShare(shareId);
+        settlementRepository.deleteAllByShareId(shareId);
         shareRepository.delete(share);
     }
 
     @Transactional
     public void settle(Long shareId, ShareSettleRequest request) {
         SubscriptionShare share = findOwnedShare(shareId);
+        if (share.getSubscription().getStatus() == SubscriptionStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.ALREADY_CANCELED);
+        }
+        if (share.getStatus() != ShareStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.INVALID_SHARE_STATUS);
+        }
         SettlementRecord record = settlementRepository
                 .findByShareIdAndPeriod(shareId, request.period())
                 .orElseGet(() -> SettlementRecord.builder()
@@ -161,6 +188,8 @@ public class SubscriptionShareService {
         List<SubscriptionShare> shares = shareRepository
                 .findAllBySubscriptionOwnerEmailOrderByIdAsc(subscriptionFinder.currentOwnerEmail()).stream()
                 .filter(share -> share.getStatus() == ShareStatus.ACTIVE)
+                .filter(share -> share.getSubscription().getStatus() != SubscriptionStatus.CANCELED
+                        && share.getSubscription().getStatus() != SubscriptionStatus.PAUSED)
                 .toList();
         Map<Long, SettlementRecord> records = recordsByShareId(shares, resolvedPeriod);
 

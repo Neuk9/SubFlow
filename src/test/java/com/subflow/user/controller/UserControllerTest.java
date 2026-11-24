@@ -140,6 +140,28 @@ class UserControllerTest {
     }
 
     @Test
+    @DisplayName("동의 여부가 누락되면 400을 반환한다")
+    void rejectsMissingAgreedInConsentUpdate() throws Exception {
+        mockMvc.perform(put("/api/me/consents")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"MARKETING\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT_VALUE"));
+
+        then(userService).should(org.mockito.Mockito.never()).updateConsent(any(), any());
+    }
+
+    @Test
+    @DisplayName("관심 카테고리에 null 요소가 포함되면 400을 반환한다")
+    void rejectsNullElementInInterests() throws Exception {
+        mockMvc.perform(put("/api/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"birthYear\":2002,\"occupation\":\"UNIVERSITY\",\"interests\":[null]}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_INPUT_VALUE"));
+    }
+
+    @Test
     @DisplayName("내 데이터를 JSON 첨부로 내려받는다")
     void exportsData() throws Exception {
         given(dataExportService.export(EMAIL)).willReturn(new DataExportResponse(
