@@ -30,7 +30,18 @@ class SecurityModeValidatorTest {
     void failsWhenProdUsesDemo() {
         var env = new MockEnvironment().withProperty("spring.profiles.active", "prod");
         var validator = validator(AuthMode.DEMO, List.of("https://subflow.stda.app"), "pepper", true, env, true);
-        assertThatThrownBy(validator::afterPropertiesSet).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(validator::afterPropertiesSet)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("prod 프로필에서는 demo 모드");
+    }
+
+    @Test
+    void failsWhenProdCombinedWithExplicitDemoProfileUsesDemo() {
+        var env = new MockEnvironment().withProperty("spring.profiles.active", "prod,local");
+        var validator = validator(AuthMode.DEMO, List.of("https://subflow.stda.app"), "pepper", true, env, true);
+        assertThatThrownBy(validator::afterPropertiesSet)
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("prod 프로필에서는 demo 모드");
     }
 
     @Test
