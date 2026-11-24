@@ -50,7 +50,9 @@ class InsightControllerTest {
                         new BigDecimal("10900"), new BigDecimal("5900"), new BigDecimal("5000"))),
                 new BigDecimal("5000"),
                 List.of(new InsightResponse.DuplicateGroup("음악 스트리밍",
-                        List.of("스포티파이 개인", "애플 뮤직 개인"), new BigDecimal("21900")))));
+                        List.of("스포티파이 개인", "애플 뮤직 개인"), new BigDecimal("21900"))),
+                List.of(new InsightResponse.BenefitRecommendation("YOUTH", "청년 대상 혜택",
+                        "만 24세 청년 혜택을 확인해 보세요.", null))));
 
         mockMvc.perform(get("/api/insights"))
                 .andExpect(status().isOk())
@@ -58,6 +60,7 @@ class InsightControllerTest {
                 .andExpect(jsonPath("$.annualSavings[0].serviceName").value("노션"))
                 .andExpect(jsonPath("$.studentSavingTotal").value(5000))
                 .andExpect(jsonPath("$.duplicateGroups[0].group").value("음악 스트리밍"))
-                .andExpect(jsonPath("$.duplicateGroups[0].monthlyTotal").value(21900));
+                .andExpect(jsonPath("$.duplicateGroups[0].monthlyTotal").value(21900))
+                .andExpect(jsonPath("$.benefits[0].code").value("YOUTH"));
     }
 }

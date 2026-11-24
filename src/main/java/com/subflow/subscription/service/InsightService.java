@@ -1,5 +1,6 @@
 package com.subflow.subscription.service;
 
+import com.subflow.global.auth.CurrentUserProvider;
 import com.subflow.subscription.catalog.ServiceCatalog;
 import com.subflow.subscription.domain.BillingCycle;
 import com.subflow.subscription.domain.Subscription;
@@ -8,6 +9,9 @@ import com.subflow.subscription.dto.InsightResponse;
 import com.subflow.subscription.dto.ServiceCatalogResponse;
 import com.subflow.subscription.dto.ServicePlanResponse;
 import com.subflow.subscription.repository.SubscriptionRepository;
+import com.subflow.user.domain.Membership;
+import com.subflow.user.domain.Occupation;
+import com.subflow.user.domain.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +22,7 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.time.Year;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -57,6 +62,7 @@ public class InsightService {
 
     private final SubscriptionRepository subscriptionRepository;
     private final SubscriptionFinder subscriptionFinder;
+    private final CurrentUserProvider currentUserProvider;
 
     public InsightResponse getInsights() {
         String ownerEmail = subscriptionFinder.currentOwnerEmail();
@@ -83,6 +89,8 @@ public class InsightService {
             collectDuplicateGroup(service, subscription, groupServiceIds, groupTotals, groupServiceNames);
         }
 
+        List<InsightResponse.BenefitRecommendation> benefits = buildBenefits(subscriptions);
+
         List<InsightResponse.DuplicateGroup> duplicateGroups = groupServiceIds.entrySet().stream()
                 .filter(entry -> entry.getValue().size() >= 2)
                 .map(entry -> new InsightResponse.DuplicateGroup(
@@ -97,7 +105,8 @@ public class InsightService {
                 sum(annualSavings.stream().map(InsightResponse.AnnualSaving::saving).toList()),
                 studentSavings,
                 sum(studentSavings.stream().map(InsightResponse.StudentSaving::saving).toList()),
-                duplicateGroups);
+                duplicateGroups,
+                benefits);
     }
 
     private Optional<InsightResponse.AnnualSaving> annualSaving(Subscription subscription,
@@ -152,6 +161,120 @@ public class InsightService {
         groupServiceIds.computeIfAbsent(group, key -> new LinkedHashSet<>()).add(service.getId());
         groupServiceNames.computeIfAbsent(group, key -> new LinkedHashSet<>()).add(subscription.getServiceName());
         groupTotals.merge(group, subscription.getMonthlyExpense(), BigDecimal::add);
+    }
+
+    private List<InsightResponse.BenefitRecommendation> buildBenefits(List<Subscription> subscriptions) {
+        Optional<User> currentUser = currentUserProvider.findCurrentUser();
+        if (currentUser.isEmpty()) {
+            return List.of();
+        }
+        User user = currentUser.get();
+        List<InsightResponse.BenefitRecommendation> benefits = new ArrayList<>();
+
+        addFamilyPlanBenefits(user, subscriptions, benefits);
+        addYouthBenefit(user, benefits);
+        addMembershipBenefits(user, benefits);
+        addStudentBenefit(user, benefits);
+        return benefits;
+    }
+
+    private void addFamilyPlanBenefits(User user, List<Subscription> subscriptions,
+                                       List<InsightResponse.BenefitRecommendation> benefits) {
+        int householdSize = user.getHouseholdSize() == null ? 1 : user.getHouseholdSize();
+        if (householdSize < 2) {
+            return;
+        }
+        for (Subscription subscription : subscriptions) {
+            Optional<ServiceCatalogResponse> matched = findService(subscription.getServiceName());
+            if (matched.isEmpty()) {
+                continue;
+            }
+            Optional<ServicePlanResponse> familyPlan = matched.get().getPlans().stream()
+                    .filter(plan -> plan.getBillingCycle() == BillingCycle.MONTHLY)
+                    .filter(plan -> plan.getName().contains("패밀리")
+                            || plan.getName().contains("가족")
+                            || plan.getName().contains("Family"))
+                    .findFirst();
+            if (familyPlan.isEmpty()) {
+                continue;
+            }
+            BigDecimal individualTotal = subscription.getMonthlyExpense()
+                    .multiply(BigDecimal.valueOf(householdSize));
+            BigDecimal saving = individualTotal.subtract(familyPlan.get().getFee());
+            if (saving.signum() <= 0) {
+                continue;
+            }
+            benefits.add(new InsightResponse.BenefitRecommendation(
+                    "FAMILY_PLAN",
+                    matched.get().getName() + " 가족 요금제",
+                    "가구원 " + householdSize + "명이 각자 결제 중이라면 "
+                            + familyPlan.get().getDisplayName() + "으로 월 "
+                            + saving.stripTrailingZeros().toPlainString() + "원 절약할 수 있습니다.",
+                    saving));
+        }
+    }
+
+    private void addYouthBenefit(User user, List<InsightResponse.BenefitRecommendation> benefits) {
+        if (user.getBirthYear() == null) {
+            return;
+        }
+        int age = Year.now().getValue() - user.getBirthYear();
+        if (age >= 19 && age <= 34) {
+            benefits.add(new InsightResponse.BenefitRecommendation(
+                    "YOUTH",
+                    "청년 대상 혜택",
+                    "만 " + age + "세는 통신사 청년 요금제와 문화·교통 할인을 받을 수 있습니다. 가입 조건을 확인해 보세요.",
+                    null));
+        }
+    }
+
+    private void addMembershipBenefits(User user, List<InsightResponse.BenefitRecommendation> benefits) {
+        Set<Membership> memberships = user.membershipSet();
+        if (memberships.isEmpty()) {
+            return;
+        }
+        boolean telecom = memberships.stream().anyMatch(membership ->
+                membership == Membership.SKT || membership == Membership.KT
+                        || membership == Membership.LG_U_PLUS || membership == Membership.MVNO);
+        boolean card = memberships.stream().anyMatch(membership ->
+                membership.name().endsWith("_CARD") || membership == Membership.KAKAO_BANK
+                        || membership == Membership.TOSS_BANK);
+        boolean shopping = memberships.stream().anyMatch(membership ->
+                membership == Membership.COUPANG_WOW || membership == Membership.NAVER_PLUS
+                        || membership == Membership.BAEMIN_CLUB);
+
+        if (telecom) {
+            benefits.add(new InsightResponse.BenefitRecommendation(
+                    "TELECOM_MEMBERSHIP",
+                    "통신사 멤버십 할인",
+                    "통신사 멤버십으로 구독형 서비스를 할인받을 수 있는지 확인해 보세요.",
+                    null));
+        }
+        if (card) {
+            benefits.add(new InsightResponse.BenefitRecommendation(
+                    "CARD_MEMBERSHIP",
+                    "카드사 구독 할인",
+                    "보유 카드의 구독·정기결제 할인 혜택을 확인해 보세요.",
+                    null));
+        }
+        if (shopping) {
+            benefits.add(new InsightResponse.BenefitRecommendation(
+                    "SHOPPING_MEMBERSHIP",
+                    "쇼핑 멤버십 혜택",
+                    "쇼핑 멤버십에 포함된 영상·배송 혜택이 구독과 겹치는지 확인해 보세요.",
+                    null));
+        }
+    }
+
+    private void addStudentBenefit(User user, List<InsightResponse.BenefitRecommendation> benefits) {
+        Occupation occupation = user.getOccupation();
+        if (occupation != null && occupation.isStudent()) {
+            benefits.add(new InsightResponse.BenefitRecommendation(
+                    "STUDENT_VERIFICATION",
+                    "학생 인증 할인",
+                    "학생 인증이 필요한 서비스는 Spotify, YouTube, Apple Music 외에도 Adobe, Microsoft 365 등이 있습니다.",
+                    null));
+        }
     }
 
     private Optional<ServiceCatalogResponse> findService(String serviceName) {
