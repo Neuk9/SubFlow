@@ -1,5 +1,7 @@
 package com.subflow.subscription.dto;
 
+import com.subflow.global.common.MoneyFormatter;
+import com.subflow.subscription.brand.ServiceBrand;
 import com.subflow.subscription.domain.BillingCycle;
 import com.subflow.subscription.domain.Category;
 import com.subflow.subscription.domain.Subscription;
@@ -20,6 +22,8 @@ public class SubscriptionResponse {
     private String serviceName;
     private Category category;
     private String categoryDescription;
+    private String logoSlug;
+    private String logoColor;
     private BigDecimal fee;
     private BillingCycle billingCycle;
     private String billingCycleDescription;
@@ -41,12 +45,15 @@ public class SubscriptionResponse {
 
     public static SubscriptionResponse from(Subscription subscription, LocalDate baseDate) {
         long dDay = ChronoUnit.DAYS.between(baseDate, subscription.getNextBillingDate());
+        ServiceBrand brand = ServiceBrand.resolve(subscription.getServiceName());
 
         return SubscriptionResponse.builder()
                 .id(subscription.getId())
                 .serviceName(subscription.getServiceName())
                 .category(subscription.getCategory())
                 .categoryDescription(subscription.getCategory().getDescription())
+                .logoSlug(brand != null ? brand.getSlug() : null)
+                .logoColor(brand != null ? brand.getColor() : null)
                 .fee(subscription.getFee())
                 .billingCycle(subscription.getBillingCycle())
                 .billingCycleDescription(subscription.getBillingCycle().getDescription())
@@ -62,5 +69,25 @@ public class SubscriptionResponse {
                 .memo(subscription.getMemo())
                 .createdAt(subscription.getCreatedAt())
                 .build();
+    }
+
+    public String getFeeFormatted() {
+        return MoneyFormatter.format(fee);
+    }
+
+    public String getMonthlyExpenseFormatted() {
+        return MoneyFormatter.format(monthlyExpense);
+    }
+
+    public String getInitial() {
+        if (serviceName == null || serviceName.isBlank()) {
+            return "?";
+        }
+        String trimmed = serviceName.trim();
+        return trimmed.substring(0, trimmed.offsetByCodePoints(0, 1));
+    }
+
+    public String getCategoryColor() {
+        return category == null ? Category.OTHER.getColor() : category.getColor();
     }
 }
