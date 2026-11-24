@@ -47,7 +47,7 @@ public class SlidingWindowLimiter {
             return deque;
         });
 
-        evictIfNeeded(now, window);
+        evictIfNeeded();
         return acquired[0];
     }
 
@@ -74,22 +74,15 @@ public class SlidingWindowLimiter {
         return Math.max(1L, (remainingMillis + 999) / 1000);
     }
 
-    private void evictIfNeeded(long now, Duration window) {
+    private void evictIfNeeded() {
         if (requests.size() <= MAX_KEYS) {
             return;
         }
 
-        long cutoff = now - window.toMillis();
-        requests.entrySet().removeIf(entry -> {
-            Deque<Long> deque = entry.getValue();
-            synchronized (deque) {
-                while (!deque.isEmpty() && deque.peekFirst() <= cutoff) {
-                    deque.pollFirst();
-                }
-                return deque.isEmpty();
-            }
-        });
-
+        // 키마다 윈도우가 다르므로 호출자의 윈도우로 다른 키의 기록을 정리하면 안 된다.
+        // (예: 1분 요청이 1시간 키의 유효한 기록을 지우는 문제)
+        // 오래된 키부터 통째로 제거하는 것만으로 상한을 유지하고, 만료된 기록은
+        // 해당 키의 다음 요청에서 자기 윈도우 기준으로 정리된다.
         while (requests.size() > MAX_KEYS) {
             String oldestKey = null;
             long oldestTimestamp = Long.MAX_VALUE;

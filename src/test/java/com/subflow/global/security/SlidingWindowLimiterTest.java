@@ -54,4 +54,26 @@ class SlidingWindowLimiterTest {
 
         assertThat(limiter.retryAfterSeconds("u", Duration.ofMinutes(1))).isEqualTo(40);
     }
+
+    @Test
+    @DisplayName("짧은 윈도우 요청의 키 정리가 긴 윈도우 키의 기록을 지우지 않는다")
+    void shortWindowEvictionDoesNotResetLongWindowHistory() {
+        for (int i = 0; i < SlidingWindowLimiter.MAX_KEYS - 1; i++) {
+            assertThat(limiter.tryAcquire("minute-" + i, 1, Duration.ofMinutes(1))).isTrue();
+        }
+        clock.plus(Duration.ofMillis(1));
+
+        Duration oneHour = Duration.ofHours(1);
+        assertThat(limiter.tryAcquire("hourly", 3, oneHour)).isTrue();
+        assertThat(limiter.tryAcquire("hourly", 3, oneHour)).isTrue();
+        assertThat(limiter.tryAcquire("hourly", 3, oneHour)).isTrue();
+        assertThat(limiter.tryAcquire("hourly", 3, oneHour)).isFalse();
+
+        // 1분 윈도우는 지났지만 1시간 윈도우 기록은 아직 유효한 시점
+        clock.plus(Duration.ofMinutes(2));
+        assertThat(limiter.tryAcquire("minute-trigger", 1, Duration.ofMinutes(1))).isTrue();
+
+        // 1분 요청으로 인한 정리가 1시간 키의 기록을 초기화하면 안 된다.
+        assertThat(limiter.tryAcquire("hourly", 3, oneHour)).isFalse();
+    }
 }
