@@ -38,6 +38,7 @@ public class CsvParser {
             CSVFormat format = CSVFormat.DEFAULT.builder()
                     .setDelimiter(delimiter)
                     .build();
+            // 헤더 1개가 포함될 수 있으므로 전체 레코드 상한은 maxRows + 1이다.
             int maxRecords = limits.maxRows() + 1;
             int recordCount = 0;
             try (CSVParser csvParser = CSVParser.parse(new StringReader(text), format)) {
