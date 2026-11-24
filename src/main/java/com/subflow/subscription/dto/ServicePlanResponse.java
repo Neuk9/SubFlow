@@ -16,4 +16,5 @@ public class ServicePlanResponse {
     private BigDecimal fee;
     private BillingCycle billingCycle;
     private String billingCycleDescription;
+    private boolean student;
 }

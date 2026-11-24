@@ -4,13 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="light">
-    <title>SubFlow - 구독 관리 대시보드</title>
+    <title>SubFlow - 구독 관리</title>
 
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <link rel="stylesheet" href="/css/app.css?v=20261124m">
+    <link rel="stylesheet" href="/css/app.css?v=20261125m">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -27,297 +27,223 @@
     </div>
 </div>
 
-<div class="sf-shell">
+<!-- 상단 내비게이션 -->
+<header class="sf-top">
+    <div class="sf-top-inner">
+        <a class="sf-logo" href="/">SubFlow</a>
 
-    <!-- 사이드바 -->
-    <aside class="sf-sidebar">
-        <a class="sf-brand" href="/">
-            <span class="sf-brand-mark"><i class="bi bi-wallet2"></i></span>
-            <span>SubFlow</span>
-        </a>
-
-        <nav class="sf-nav nav" id="viewTabs" role="tablist" aria-label="화면 전환">
-            <button class="sf-nav-link nav-link active" id="tab-list-btn" type="button" role="tab"
-                    data-bs-toggle="pill" data-bs-target="#tab-list" aria-controls="tab-list" aria-selected="true">
-                <i class="bi bi-grid-1x2"></i>구독 목록
-            </button>
-            <button class="sf-nav-link nav-link" id="tab-cal-btn" type="button" role="tab"
-                    data-bs-toggle="pill" data-bs-target="#tab-calendar" aria-controls="tab-calendar" aria-selected="false"
-                    onclick="loadCalendar()">
-                <i class="bi bi-calendar3"></i>결제 캘린더
-            </button>
-            <button class="sf-nav-link nav-link" id="tab-charts-btn" type="button" role="tab"
-                    data-bs-toggle="pill" data-bs-target="#tab-charts" aria-controls="tab-charts" aria-selected="false"
-                    onclick="renderCharts()">
-                <i class="bi bi-pie-chart"></i>지출 분석
-            </button>
+        <nav class="sf-tabs" id="viewTabs" role="tablist" aria-label="화면 전환">
+            <button class="sf-tab active" id="tab-cal-btn" type="button" role="tab"
+                    data-bs-toggle="pill" data-bs-target="#tab-calendar" aria-controls="tab-calendar"
+                    aria-selected="true" onclick="loadCalendar()">캘린더</button>
+            <button class="sf-tab" id="tab-list-btn" type="button" role="tab"
+                    data-bs-toggle="pill" data-bs-target="#tab-list" aria-controls="tab-list"
+                    aria-selected="false">구독</button>
+            <button class="sf-tab" id="tab-charts-btn" type="button" role="tab"
+                    data-bs-toggle="pill" data-bs-target="#tab-charts" aria-controls="tab-charts"
+                    aria-selected="false" onclick="renderCharts()">분석</button>
         </nav>
 
-        <div class="sf-sidebar-footer">
-            <div class="sf-demo">
-                <div class="sf-demo-title"><i class="bi bi-cpu"></i> 데모 도구</div>
-                <div class="sf-demo-buttons">
-                    <button type="button" class="sf-demo-btn" onclick="triggerBatch('run-billing-batch')" title="오늘자 결제 완료 및 다음 결제일 갱신">결제 갱신</button>
-                    <button type="button" class="sf-demo-btn" onclick="triggerBatch('run-notification-batch')" title="D-3 결제 예정 알림 생성">알림 발송</button>
-                    <button type="button" class="sf-demo-btn" onclick="triggerBatch('run-expiration-batch')" title="해지 예정 건 자동 해지">만료 처리</button>
-                </div>
-                <div class="sf-demo-note">배치 작업을 즉시 실행합니다</div>
+        <div class="sf-top-actions">
+            <span class="sf-today" id="todayLabel"></span>
+            <button type="button" class="sf-btn sf-btn-ghost" data-bs-toggle="modal" data-bs-target="#importModal">
+                <i class="bi bi-upload"></i>내역 가져오기
+            </button>
+            <button type="button" class="sf-btn sf-btn-primary" data-bs-toggle="modal" data-bs-target="#createModal">
+                <i class="bi bi-plus-lg"></i>새 구독
+            </button>
+        </div>
+    </div>
+</header>
+
+<main class="sf-main">
+
+    <!-- 요약 지표 -->
+    <section class="sf-kpis" aria-label="구독 요약">
+        <div class="sf-kpi">
+            <div class="sf-kpi-label">이번 달 예상 구독료</div>
+            <div class="sf-kpi-value" id="statMonthlyExpense">{{#summary}}{{totalMonthlyExpenseFormatted}}{{/summary}}{{^summary}}0{{/summary}}<span>원</span></div>
+            <div class="sf-kpi-meta">연간 환산 {{#summary}}{{totalYearlyExpenseFormatted}}{{/summary}}{{^summary}}0{{/summary}}원</div>
+        </div>
+        <div class="sf-kpi">
+            <div class="sf-kpi-label">이용 중인 구독</div>
+            <div class="sf-kpi-value" id="statActiveCount">{{#summary}}{{activeCount}}{{/summary}}{{^summary}}0{{/summary}}<span>개</span></div>
+            <div class="sf-kpi-meta">정상 자동 갱신 중</div>
+        </div>
+        <div class="sf-kpi">
+            <div class="sf-kpi-label">7일 이내 결제</div>
+            <div class="sf-kpi-value" id="statUpcomingCount">{{#summary}}{{upcomingCountWithin7Days}}{{/summary}}{{^summary}}0{{/summary}}<span>건</span></div>
+            <div class="sf-kpi-meta">결제일이 곧 도래합니다</div>
+        </div>
+    </section>
+
+    <div class="tab-content" id="viewTabContent">
+
+        <!-- 1. 캘린더 -->
+        <div class="tab-pane fade show active" id="tab-calendar" role="tabpanel" aria-labelledby="tab-cal-btn">
+            <div class="sf-cal-layout">
+                <section class="sf-calendar">
+                    <div class="sf-cal-head">
+                        <h2 class="sf-cal-title" id="calCurrentTitle">2026년 11월</h2>
+                        <div class="sf-cal-nav">
+                            <button type="button" onclick="changeMonth(-1)" aria-label="이전 달">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <button type="button" onclick="goToCurrentMonth()">오늘</button>
+                            <button type="button" onclick="changeMonth(1)" aria-label="다음 달">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <table class="calendar-table">
+                        <thead>
+                        <tr>
+                            <th>일</th>
+                            <th>월</th>
+                            <th>화</th>
+                            <th>수</th>
+                            <th>목</th>
+                            <th>금</th>
+                            <th>토</th>
+                        </tr>
+                        </thead>
+                        <tbody id="calendarGridBody">
+                        <!-- JS 동적 캘린더 생성 -->
+                        </tbody>
+                    </table>
+                </section>
+
+                <aside class="sf-month">
+                    <div class="sf-month-head">
+                        <h3>이번 달 결제</h3>
+                        <span id="monthTotal">0원</span>
+                    </div>
+                    <div id="monthPayments" class="sf-month-list">
+                        <div class="sf-empty-line">불러오는 중…</div>
+                    </div>
+                </aside>
             </div>
         </div>
-    </aside>
 
-    <!-- 본문 -->
-    <div class="sf-main">
-        <header class="sf-topbar">
-            <div>
-                <div class="sf-eyebrow">SUBSCRIPTION OVERVIEW</div>
-                <h2 class="sf-page-title">구독 대시보드</h2>
-            </div>
-            <div class="sf-topbar-actions">
-                <span class="sf-today" id="todayLabel"></span>
-                <button type="button" class="sf-btn sf-btn-primary" data-bs-toggle="modal" data-bs-target="#createModal">
-                    <i class="bi bi-plus-lg"></i>새 구독
-                </button>
-            </div>
-        </header>
-
-        <main class="sf-content">
-
-            <!-- 요약 지표 -->
-            <section class="sf-kpis" aria-label="구독 요약">
-                <div class="sf-kpi">
-                    <div class="sf-kpi-top">
-                        <span>이번 달 예상 구독료</span>
-                        <span class="sf-kpi-icon"><i class="bi bi-wallet2"></i></span>
-                    </div>
-                    <div class="sf-kpi-value" id="statMonthlyExpense">
-                        {{#summary}}{{totalMonthlyExpenseFormatted}}{{/summary}}{{^summary}}0{{/summary}}<span> 원</span>
-                    </div>
-                    <div class="sf-kpi-meta">연간 환산 {{#summary}}{{totalYearlyExpenseFormatted}}{{/summary}}{{^summary}}0{{/summary}}원</div>
+        <!-- 2. 구독 목록 -->
+        <div class="tab-pane fade" id="tab-list" role="tabpanel" aria-labelledby="tab-list-btn">
+            <section class="sf-list-panel">
+                <div class="sf-list-head">
+                    <h2 class="sf-list-title">구독</h2>
+                    <span class="sf-count">총 {{#summary}}{{activeCount}}{{/summary}}{{^summary}}0{{/summary}}건</span>
                 </div>
 
-                <div class="sf-kpi">
-                    <div class="sf-kpi-top">
-                        <span>이용 중인 구독</span>
-                        <span class="sf-kpi-icon is-success"><i class="bi bi-check2-circle"></i></span>
+                <div class="sf-sub-list" id="subscriptionList">
+                    {{#subscriptions}}
+                    <article class="sf-sub-item">
+                        <span class="sf-avatar" aria-hidden="true">{{#logoSlug}}{{#logoImage}}<img class="sf-brand-img" src="/logos/{{logoSlug}}.png" alt="">{{/logoImage}}{{^logoImage}}<span class="sf-brand-logo" style="--brand-logo: url('/logos/{{logoSlug}}.svg'); --brand-color: {{logoColor}};"></span>{{/logoImage}}{{/logoSlug}}{{^logoSlug}}{{initial}}{{/logoSlug}}</span>
+                        <div class="sf-sub-main">
+                            <div class="sf-sub-name" title="{{serviceName}}">{{serviceName}}</div>
+                            <div class="sf-sub-memo">{{categoryDescription}} · {{billingCycleDescription}}{{#memo}} · {{memo}}{{/memo}}</div>
+                        </div>
+                        <div class="sf-sub-amount">
+                            <div class="sf-amount">{{monthlyExpenseFormatted}}<span>원</span></div>
+                            <div class="sf-sub-date">{{nextBillingDate}} · D-{{dDay}}</div>
+                        </div>
+                        <div class="sf-sub-actions">
+                            <span class="sf-status" data-status="{{status}}">{{statusDescription}}</span>
+                            <div class="dropdown">
+                                <button type="button" class="sf-icon-btn" data-bs-toggle="dropdown"
+                                        aria-expanded="false" aria-label="{{serviceName}} 관리 메뉴">
+                                    <i class="bi bi-three-dots"></i>
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end sf-dropdown">
+                                    <li>
+                                        <button type="button" class="dropdown-item" data-id="{{id}}"
+                                                data-name="{{serviceName}}" onclick="openShareModal(this)">함께 쓰기</button>
+                                    </li>
+                                    <li>
+                                        <button type="button" class="dropdown-item" data-name="{{serviceName}}"
+                                                onclick="openCancelGuide(this)">해지 방법</button>
+                                    </li>
+                                    <li>
+                                        <button type="button" class="dropdown-item" data-id="{{id}}"
+                                                data-name="{{serviceName}}" onclick="cancelModal(this)">해지</button>
+                                    </li>
+                                    <li>
+                                        <button type="button" class="dropdown-item text-danger" data-id="{{id}}"
+                                                onclick="deleteSubscription(this)">삭제</button>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </article>
+                    {{/subscriptions}}
+                    {{^subscriptions}}
+                    <div class="sf-empty">
+                        <i class="bi bi-inbox"></i>
+                        <p>등록된 구독이 없습니다. 오른쪽 위의 <strong>새 구독</strong> 버튼으로 추가해보세요.</p>
                     </div>
-                    <div class="sf-kpi-value" id="statActiveCount">
-                        {{#summary}}{{activeCount}}{{/summary}}{{^summary}}0{{/summary}}<span> 개</span>
-                    </div>
-                    <div class="sf-kpi-meta">정상 자동 갱신 중</div>
-                </div>
-
-                <div class="sf-kpi">
-                    <div class="sf-kpi-top">
-                        <span>7일 이내 결제</span>
-                        <span class="sf-kpi-icon is-warning"><i class="bi bi-alarm"></i></span>
-                    </div>
-                    <div class="sf-kpi-value" id="statUpcomingCount">
-                        {{#summary}}{{upcomingCountWithin7Days}}{{/summary}}{{^summary}}0{{/summary}}<span> 건</span>
-                    </div>
-                    <div class="sf-kpi-meta">결제일이 곧 도래합니다</div>
+                    {{/subscriptions}}
                 </div>
             </section>
+        </div>
 
-            <div class="tab-content" id="viewTabContent">
-
-                <!-- 1. 구독 목록 -->
-                <div class="tab-pane fade show active" id="tab-list" role="tabpanel" aria-labelledby="tab-list-btn">
-                    <div class="sf-grid">
-                        <section class="sf-panel">
-                            <div class="sf-panel-head">
-                                <h3 class="sf-panel-title"><i class="bi bi-collection"></i>내 구독 서비스</h3>
-                                <div class="sf-panel-head-actions">
-                                    <span class="sf-count">총 {{#summary}}{{activeCount}}{{/summary}}{{^summary}}0{{/summary}}건</span>
-                                    <button type="button" class="sf-btn sf-btn-ghost sf-btn-sm"
-                                            data-bs-toggle="modal" data-bs-target="#importModal">
-                                        <i class="bi bi-upload"></i>내역 가져오기
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="sf-panel-body">
-                                <div class="sf-sub-list" id="subscriptionList">
-                                    {{#subscriptions}}
-                                    <article class="sf-sub-item">
-                                        <span class="sf-avatar" style="background-color: {{categoryColor}}1f;" aria-hidden="true">{{#logoSlug}}<span class="sf-brand-logo" style="--brand-logo: url('/logos/{{logoSlug}}.svg'); --brand-color: {{logoColor}};"></span>{{/logoSlug}}{{^logoSlug}}{{initial}}{{/logoSlug}}</span>
-                                        <div class="sf-sub-main">
-                                            <div class="sf-sub-name" title="{{serviceName}}">{{serviceName}}</div>
-                                            {{#memo}}<div class="sf-sub-memo" title="{{memo}}">{{memo}}</div>{{/memo}}
-                                        </div>
-                                        <div class="sf-sub-meta">
-                                            <span class="sf-chip">{{categoryDescription}}</span>
-                                            <span class="sf-chip">{{billingCycleDescription}}</span>
-                                        </div>
-                                        <div class="sf-sub-amount">
-                                            <div class="sf-amount">{{monthlyExpenseFormatted}}<span>원</span></div>
-                                            <div class="sf-sub-date">{{nextBillingDate}}<span class="sf-dday">D-{{dDay}}</span></div>
-                                        </div>
-                                        <div class="sf-sub-actions">
-                                            <span class="sf-status" data-status="{{status}}">{{statusDescription}}</span>
-                                            <div class="dropdown">
-                                                <button type="button" class="sf-icon-btn" data-bs-toggle="dropdown"
-                                                        aria-expanded="false" aria-label="{{serviceName}} 관리 메뉴">
-                                                    <i class="bi bi-three-dots"></i>
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end sf-dropdown">
-                                                    <li>
-                                                        <button type="button" class="dropdown-item" data-id="{{id}}"
-                                                                data-name="{{serviceName}}" onclick="cancelModal(this)">해지</button>
-                                                    </li>
-                                                    <li>
-                                                        <button type="button" class="dropdown-item text-danger" data-id="{{id}}"
-                                                                onclick="deleteSubscription(this)">삭제</button>
-                                                    </li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </article>
-                                    {{/subscriptions}}
-                                    {{^subscriptions}}
-                                    <div class="sf-empty">
-                                        <i class="bi bi-inbox"></i>
-                                        <p>등록된 구독 서비스가 없습니다.<br>오른쪽 위의 <strong>새 구독</strong> 버튼으로 추가해보세요.</p>
-                                    </div>
-                                    {{/subscriptions}}
-                                </div>
-                            </div>
-                        </section>
-
-                        <aside class="sf-side">
-                            <section class="sf-panel">
-                                <div class="sf-panel-head">
-                                    <h3 class="sf-panel-title"><i class="bi bi-pie-chart"></i>카테고리 지출</h3>
-                                    <span class="sf-count">월 환산</span>
-                                </div>
-                                <div class="sf-panel-body">
-                                    <div class="sf-cat-list">
-                                        {{#summary.categoryExpenses}}
-                                        <div class="sf-cat-row">
-                                            <div class="sf-cat-head">
-                                                <span class="sf-cat-name">
-                                                    <span class="sf-cat-dot" style="background-color: {{color}};"></span>
-                                                    {{categoryDescription}} <span class="text-muted">{{count}}건</span>
-                                                </span>
-                                                <span class="sf-cat-amount">{{amountFormatted}}원 <span>({{percentage}}%)</span></span>
-                                            </div>
-                                            <div class="sf-cat-track">
-                                                <div class="sf-cat-fill" style="width: {{percentage}}%; background-color: {{color}};"></div>
-                                            </div>
-                                        </div>
-                                        {{/summary.categoryExpenses}}
-                                        {{^summary.categoryExpenses}}
-                                        <div class="sf-empty is-compact">
-                                            <i class="bi bi-bar-chart"></i>
-                                            <p>집계된 카테고리 데이터가 없습니다.</p>
-                                        </div>
-                                        {{/summary.categoryExpenses}}
-                                    </div>
-                                </div>
-                            </section>
-
-                            <section class="sf-panel">
-                                <div class="sf-panel-head">
-                                    <h3 class="sf-panel-title"><i class="bi bi-clock-history"></i>최근 활동</h3>
-                                </div>
-                                <div class="sf-panel-body" style="max-height: 320px; overflow-y: auto;">
-                                    <div id="logsContainer">
-                                        <div class="sf-empty is-compact">
-                                            <i class="bi bi-bell"></i>
-                                            <p>배치를 실행하면 알림과 결제 기록이 표시됩니다.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </section>
-                        </aside>
+        <!-- 3. 지출 분석 -->
+        <div class="tab-pane fade" id="tab-charts" role="tabpanel" aria-labelledby="tab-charts-btn">
+            <div class="sf-insight-grid">
+                <section class="sf-insight-panel">
+                    <h2 class="sf-list-title">절약 제안</h2>
+                    <p class="sf-insight-total" id="insightSavingTotal">-</p>
+                    <div class="sf-insight-list" id="insightSavings">
+                        <div class="sf-empty-line">불러오는 중…</div>
                     </div>
-                </div>
-
-                <!-- 2. 결제 캘린더 -->
-                <div class="tab-pane fade" id="tab-calendar" role="tabpanel" aria-labelledby="tab-cal-btn">
-                    <section class="sf-panel">
-                        <div class="sf-panel-head sf-calendar-toolbar">
-                            <div class="sf-calendar-toolbar-title">
-                                <h3 class="sf-panel-title"><i class="bi bi-calendar3"></i>결제 일정</h3>
-                                <span class="sf-calendar-month" id="calCurrentTitle">2026년 11월</span>
-                            </div>
-                            <div class="sf-segmented" role="group" aria-label="월 이동">
-                                <button type="button" class="sf-seg-btn" onclick="changeMonth(-1)" aria-label="이전 달">
-                                    <i class="bi bi-chevron-left"></i>
-                                </button>
-                                <button type="button" class="sf-seg-btn" onclick="goToCurrentMonth()">오늘</button>
-                                <button type="button" class="sf-seg-btn" onclick="changeMonth(1)" aria-label="다음 달">
-                                    <i class="bi bi-chevron-right"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="sf-calendar-legend" id="calLegend">
-                            {{#categories}}
-                            <span class="sf-legend-item">
-                                <span class="sf-legend-dot" style="background-color: {{color}};"></span>{{description}}
-                            </span>
-                            {{/categories}}
-                        </div>
-
-                        <div class="table-responsive sf-calendar-scroll">
-                            <table class="calendar-table">
-                                <thead>
-                                <tr>
-                                    <th>일</th>
-                                    <th>월</th>
-                                    <th>화</th>
-                                    <th>수</th>
-                                    <th>목</th>
-                                    <th>금</th>
-                                    <th>토</th>
-                                </tr>
-                                </thead>
-                                <tbody id="calendarGridBody">
-                                <!-- JS 동적 캘린더 생성 -->
-                                </tbody>
-                            </table>
-                        </div>
-                    </section>
-                </div>
-
-                <!-- 3. 지출 분석 -->
-                <div class="tab-pane fade" id="tab-charts" role="tabpanel" aria-labelledby="tab-charts-btn">
-                    <div class="sf-chart-grid">
-                        <section class="sf-panel">
-                            <div class="sf-panel-head">
-                                <h3 class="sf-panel-title"><i class="bi bi-pie-chart"></i>카테고리별 지출 비율</h3>
-                            </div>
-                            <div class="sf-panel-body">
-                                <div class="sf-chart-box">
-                                    <div class="sf-donut-wrap">
-                                        <canvas id="categoryDonutChart"></canvas>
-                                        <div class="sf-donut-center">
-                                            <span>월 환산</span>
-                                            <strong id="donutTotal">-</strong>
-                                            <span>원</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </section>
-
-                        <section class="sf-panel">
-                            <div class="sf-panel-head">
-                                <h3 class="sf-panel-title"><i class="bi bi-bar-chart"></i>서비스별 월 지출</h3>
-                            </div>
-                            <div class="sf-panel-body">
-                                <div class="sf-chart-box">
-                                    <canvas id="servicesBarChart"></canvas>
-                                </div>
-                            </div>
-                        </section>
+                </section>
+                <section class="sf-insight-panel">
+                    <h2 class="sf-list-title">중복 구독</h2>
+                    <p class="sf-insight-total" id="insightDuplicateTotal">-</p>
+                    <div class="sf-insight-list" id="insightDuplicates">
+                        <div class="sf-empty-line">불러오는 중…</div>
                     </div>
-                </div>
-
+                </section>
             </div>
-        </main>
+
+            <div class="sf-chart-grid">
+                <section class="sf-chart-panel">
+                    <h2 class="sf-list-title">카테고리별 지출</h2>
+                    <div class="sf-chart-box">
+                        <div class="sf-donut-wrap">
+                            <canvas id="categoryDonutChart"></canvas>
+                            <div class="sf-donut-center">
+                                <span>월 환산</span>
+                                <strong id="donutTotal">-</strong>
+                                <span>원</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="sf-chart-panel">
+                    <h2 class="sf-list-title">서비스별 월 지출</h2>
+                    <div class="sf-chart-box">
+                        <canvas id="servicesBarChart"></canvas>
+                    </div>
+                </section>
+            </div>
+
+            <section class="sf-demo-tools">
+                <div class="sf-demo-head">
+                    <span>배치 도구</span>
+                    <div class="sf-demo-buttons">
+                        <button type="button" class="sf-demo-btn" onclick="triggerBatch('run-billing-batch')">결제 갱신</button>
+                        <button type="button" class="sf-demo-btn" onclick="triggerBatch('run-notification-batch')">알림 발송</button>
+                        <button type="button" class="sf-demo-btn" onclick="triggerBatch('run-expiration-batch')">만료 처리</button>
+                    </div>
+                </div>
+                <div id="logsContainer" class="sf-log-list">
+                    <div class="sf-empty-line">배치를 실행하면 알림과 결제 기록이 표시됩니다.</div>
+                </div>
+            </section>
+        </div>
+
     </div>
-</div>
+</main>
 
 <!-- 새 구독 등록 모달 -->
 <div class="modal fade" id="createModal" tabindex="-1" aria-labelledby="createModalTitle" aria-hidden="true">
@@ -483,17 +409,15 @@
         </div>
     </div>
 </div>
-
 <!-- CSV 내역 가져오기 모달 -->
 <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title" id="importModalTitle"><i class="bi bi-upload text-primary"></i>내역 가져오기</h2>
+                <h2 class="modal-title" id="importModalTitle">내역 가져오기</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
             </div>
             <div class="modal-body">
-                <!-- 1단계: 파일 선택 -->
                 <div id="importStep1">
                     <div class="sf-import-drop" id="importDropZone" role="button" tabindex="0"
                          onclick="document.getElementById('importFileInput').click()">
@@ -507,7 +431,6 @@
                     <div class="sf-error d-none" id="importError" role="alert"></div>
                 </div>
 
-                <!-- 2단계: 미리보기 -->
                 <div id="importStep2" class="d-none">
                     <div id="importMapping" class="d-none">
                         <p class="sf-import-hint">컬럼을 자동으로 찾지 못했습니다. 직접 선택해 주세요.</p>
@@ -551,7 +474,6 @@
                     </div>
                 </div>
 
-                <!-- 3단계: 결과 -->
                 <div id="importStep3" class="d-none">
                     <div class="sf-import-result">
                         <i class="bi bi-check-circle"></i>
@@ -569,7 +491,67 @@
     </div>
 </div>
 
+
+<!-- 함께 쓰기 모달 -->
+<div class="modal fade" id="shareModal" tabindex="-1" aria-labelledby="shareModalTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="shareModalTitle">함께 쓰기</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+            </div>
+            <div class="modal-body">
+                <p class="sf-guide-service" id="shareServiceName"></p>
+
+                <div class="sf-share-summary">
+                    <div>
+                        <span>이번 달 받은 금액</span>
+                        <strong id="shareReceived">0원</strong>
+                    </div>
+                    <div>
+                        <span>남은 금액</span>
+                        <strong id="sharePending">0원</strong>
+                    </div>
+                </div>
+
+                <div id="shareList" class="sf-share-list">
+                    <div class="sf-empty-line">불러오는 중…</div>
+                </div>
+
+                <form class="sf-share-form" onsubmit="addShare(event)">
+                    <input type="text" class="form-control" id="shareMemberName" placeholder="멤버 이름" maxlength="50">
+                    <input type="number" class="form-control" id="shareAmount" placeholder="분담 금액" min="1">
+                    <button type="submit" class="sf-btn sf-btn-primary">추가</button>
+                </form>
+                <div class="sf-error d-none" id="shareError" role="alert"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 해지 방법 모달 -->
+<div class="modal fade" id="cancelGuideModal" tabindex="-1" aria-labelledby="cancelGuideTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="cancelGuideTitle">해지 방법</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="닫기"></button>
+            </div>
+            <div class="modal-body">
+                <p class="sf-guide-service" id="cancelGuideService"></p>
+                <div id="cancelGuideBody"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/js/app.js?v=20261124m" defer></script>
+<script src="/js/app.js?v=20261125m" defer></script>
 </body>
 </html>

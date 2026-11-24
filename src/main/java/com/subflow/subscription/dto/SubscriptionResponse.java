@@ -24,6 +24,7 @@ public class SubscriptionResponse {
     private String categoryDescription;
     private String logoSlug;
     private String logoColor;
+    private boolean logoImage;
     private BigDecimal fee;
     private BillingCycle billingCycle;
     private String billingCycleDescription;
@@ -54,6 +55,7 @@ public class SubscriptionResponse {
                 .categoryDescription(subscription.getCategory().getDescription())
                 .logoSlug(brand != null ? brand.getSlug() : null)
                 .logoColor(brand != null ? brand.getColor() : null)
+                .logoImage(brand != null && brand.isImage())
                 .fee(subscription.getFee())
                 .billingCycle(subscription.getBillingCycle())
                 .billingCycleDescription(subscription.getBillingCycle().getDescription())

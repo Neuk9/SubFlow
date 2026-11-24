@@ -52,6 +52,15 @@ class SubscriptionResponseTest {
     }
 
     @Test
+    @DisplayName("이미지 로고 서비스는 logoImage를 참으로 제공한다")
+    void providesImageLogoForKoreanService() {
+        SubscriptionResponse response = SubscriptionResponse.from(subscription("쿠팡 와우 멤버십"), LocalDate.of(2026, 11, 24));
+
+        assertThat(response.getLogoSlug()).isEqualTo("coupang");
+        assertThat(response.isLogoImage()).isTrue();
+    }
+
+    @Test
     @DisplayName("모르는 서비스면 로고 정보가 없어 이니셜 아바타를 쓴다")
     void hasNoLogoForUnknownService() {
         SubscriptionResponse response = SubscriptionResponse.from(subscription("동네 빵집 정기배송"), LocalDate.of(2026, 11, 24));

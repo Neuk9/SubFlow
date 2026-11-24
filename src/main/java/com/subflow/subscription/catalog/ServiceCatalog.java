@@ -18,40 +18,96 @@ import static java.util.Map.entry;
 public final class ServiceCatalog {
 
     private static final Map<String, Brand> BRANDS = Map.ofEntries(
-            entry("netflix", new Brand("netflix", "#E50914")),
-            entry("youtube", new Brand("youtube", "#FF0000")),
-            entry("apple-tv", new Brand("appletv", "#000000")),
-            entry("spotify", new Brand("spotify", "#1DB954")),
-            entry("apple-music", new Brand("applemusic", "#FA243C")),
-            entry("youtube-music", new Brand("youtubemusic", "#FF0000")),
-            entry("tidal", new Brand("tidal", "#000000")),
-            entry("deezer", new Brand("deezer", "#A238FF")),
-            entry("notion", new Brand("notion", "#000000")),
-            entry("figma", new Brand("figma", "#F24E1E")),
-            entry("zoom", new Brand("zoom", "#0B5CFF")),
-            entry("dropbox", new Brand("dropbox", "#0061FF")),
-            entry("miro", new Brand("miro", "#050038")),
-            entry("todoist", new Brand("todoist", "#E44332")),
-            entry("evernote", new Brand("evernote", "#00A82D")),
-            entry("grammarly", new Brand("grammarly", "#027E6F")),
-            entry("github-copilot", new Brand("githubcopilot", "#000000")),
-            entry("claude", new Brand("claude", "#D97757")),
-            entry("perplexity", new Brand("perplexity", "#1FB8CD")),
-            entry("gemini", new Brand("googlegemini", "#8E75B2")),
-            entry("1password", new Brand("1password", "#145FE4")),
-            entry("cursor", new Brand("cursor", "#000000")),
-            entry("linear", new Brand("linear", "#5E6AD2")),
-            entry("duolingo", new Brand("duolingo", "#58CC02")),
-            entry("coursera", new Brand("coursera", "#0056D2")),
-            entry("udemy", new Brand("udemy", "#A435F0")),
-            entry("naver-plus", new Brand("naver", "#03C75A")),
-            entry("naver-mybox", new Brand("naver", "#03C75A")),
-            entry("playstation-plus", new Brand("playstation", "#0070D1")),
-            entry("ea-play", new Brand("ea", "#000000")),
-            entry("geforce-now", new Brand("nvidia", "#76B900")),
-            entry("google-play-pass", new Brand("googleplay", "#414141")),
-            entry("icloud", new Brand("icloud", "#3693F3")),
-            entry("google-one", new Brand("google", "#4285F4"))
+            entry("netflix", svg("netflix", "#E50914")),
+            entry("youtube", svg("youtube", "#FF0000")),
+            entry("apple-tv", svg("appletv", "#000000")),
+            entry("spotify", svg("spotify", "#1DB954")),
+            entry("apple-music", svg("applemusic", "#FA243C")),
+            entry("youtube-music", svg("youtubemusic", "#FF0000")),
+            entry("tidal", svg("tidal", "#000000")),
+            entry("deezer", svg("deezer", "#A238FF")),
+            entry("notion", svg("notion", "#000000")),
+            entry("figma", svg("figma", "#F24E1E")),
+            entry("zoom", svg("zoom", "#0B5CFF")),
+            entry("dropbox", svg("dropbox", "#0061FF")),
+            entry("miro", svg("miro", "#050038")),
+            entry("todoist", svg("todoist", "#E44332")),
+            entry("evernote", svg("evernote", "#00A82D")),
+            entry("grammarly", svg("grammarly", "#027E6F")),
+            entry("github-copilot", svg("githubcopilot", "#000000")),
+            entry("claude", svg("claude", "#D97757")),
+            entry("perplexity", svg("perplexity", "#1FB8CD")),
+            entry("gemini", svg("googlegemini", "#8E75B2")),
+            entry("1password", svg("1password", "#145FE4")),
+            entry("cursor", svg("cursor", "#000000")),
+            entry("linear", svg("linear", "#5E6AD2")),
+            entry("duolingo", svg("duolingo", "#58CC02")),
+            entry("coursera", svg("coursera", "#0056D2")),
+            entry("udemy", svg("udemy", "#A435F0")),
+            entry("naver-plus", svg("naver", "#03C75A")),
+            entry("naver-mybox", svg("naver", "#03C75A")),
+            entry("playstation-plus", svg("playstation", "#0070D1")),
+            entry("ea-play", svg("ea", "#000000")),
+            entry("geforce-now", svg("nvidia", "#76B900")),
+            entry("google-play-pass", svg("googleplay", "#414141")),
+            entry("icloud", svg("icloud", "#3693F3")),
+            entry("google-one", svg("google", "#4285F4")),
+            entry("disney", png("disney", "#113CCF")),
+            entry("tving", png("tving", "#FF153C")),
+            entry("wavve", png("wavve", "#1356EC")),
+            entry("watcha", png("watcha", "#FF0558")),
+            entry("coupang-play", png("coupangplay", "#1A73E8")),
+            entry("prime-video", png("primevideo", "#00A8E1")),
+            entry("laftel", png("laftel", "#7B61FF")),
+            entry("melon", png("melon", "#00CD3C")),
+            entry("genie", png("genie", "#3B5BDB")),
+            entry("flo", png("flo", "#3D5AFE")),
+            entry("bugs", png("bugs", "#FF3D00")),
+            entry("chatgpt", svg("openai", "#412991")),
+            entry("slack", svg("slack", "#4A154B")),
+            entry("microsoft-365", svg("microsoft", "#5E5E5E")),
+            entry("adobe-creative-cloud", svg("adobe", "#FF0000")),
+            entry("canva", svg("canva", "#00C4CC")),
+            entry("microsoft-copilot", svg("microsoft", "#5E5E5E")),
+            entry("millie", png("millie", "#FF6B00")),
+            entry("ridi", png("ridi", "#1E9EFF")),
+            entry("class101", png("class101", "#FF5A5A")),
+            entry("coupang", png("coupang", "#E52528")),
+            entry("musinsa", png("musinsa", "#000000")),
+            entry("kurly", png("kurly", "#5F0080")),
+            entry("xbox-game-pass", svg("xbox", "#107C10")),
+            entry("nintendo-switch-online", svg("nintendoswitch", "#E60012"))
+    );
+
+
+    private static final Map<String, CancelGuide> CANCEL_GUIDES = Map.ofEntries(
+            entry("netflix", new CancelGuide("웹사이트 → 계정 → 멤버십 해지", "https://www.netflix.com/cancelplan")),
+            entry("youtube", new CancelGuide("YouTube 설정 → 유료 멤버십 관리", "https://www.youtube.com/paid_memberships")),
+            entry("disney", new CancelGuide("Disney+ → 프로필 → 구독", "https://www.disneyplus.com/account")),
+            entry("tving", new CancelGuide("티빙 → MY → 이용권 관리", "https://www.tving.com/my")),
+            entry("wavve", new CancelGuide("웨이브 → MY → 이용권 해지", "https://www.wavve.com/my")),
+            entry("watcha", new CancelGuide("왓챠 → 설정 → 구독 관리", "https://watcha.com/settings")),
+            entry("coupang-play", new CancelGuide("쿠팡플레이 → MY → 구독 관리", "https://www.coupangplay.com/")),
+            entry("prime-video", new CancelGuide("Amazon 계정 → 멤버십 및 구독", "https://www.amazon.com/gp/video/settings")),
+            entry("spotify", new CancelGuide("계정 → 구독 → 취소", "https://www.spotify.com/account/subscription/")),
+            entry("apple-music", new CancelGuide("iPhone 설정 → Apple ID → 구독", "https://support.apple.com/ko-kr/118428")),
+            entry("youtube-music", new CancelGuide("YouTube 설정 → 유료 멤버십 관리", "https://www.youtube.com/paid_memberships")),
+            entry("melon", new CancelGuide("멜론 → MY → 이용권 관리", "https://www.melon.com/mymusic/")),
+            entry("notion", new CancelGuide("설정 → 플랜 → 다운그레이드", "https://www.notion.so/my-account")),
+            entry("chatgpt", new CancelGuide("ChatGPT → 설정 → 구독 관리", "https://chatgpt.com/")),
+            entry("adobe-creative-cloud", new CancelGuide("Adobe 계정 → 플랜 관리", "https://account.adobe.com/plans")),
+            entry("canva", new CancelGuide("Canva → 설정 → 결제 및 플랜", "https://www.canva.com/settings/billing")),
+            entry("microsoft-365", new CancelGuide("Microsoft 계정 → 서비스 및 구독", "https://account.microsoft.com/services")),
+            entry("dropbox", new CancelGuide("Dropbox → 설정 → 플랜", "https://www.dropbox.com/account/plan")),
+            entry("xbox-game-pass", new CancelGuide("Microsoft 계정 → 구독", "https://account.microsoft.com/services")),
+            entry("nintendo-switch-online", new CancelGuide("Nintendo 계정 → 자동 갱신 설정", "https://accounts.nintendo.com/")),
+            entry("class101", new CancelGuide("클래스101 → MY → 구독 관리", "https://class101.net/")),
+            entry("millie", new CancelGuide("밀리의 서재 → MY → 이용권", "https://www.millie.co.kr/")),
+            entry("ridi", new CancelGuide("리디 → MY → 구독 관리", "https://ridibooks.com/")),
+            entry("naver-plus", new CancelGuide("네이버 → MY → 멤버십 해지", "https://nid.naver.com/")),
+            entry("coupang", new CancelGuide("쿠팡 → 마이쿠팡 → 와우 멤버십", "https://www.coupang.com/")),
+            entry("musinsa", new CancelGuide("무신사 → MY → 멤버십", "https://www.musinsa.com/")),
+            entry("kurly", new CancelGuide("컬리 → MY → 멤버십 해지", "https://www.kurly.com/"))
     );
 
     private static final List<ServiceCatalogResponse> SERVICES = List.of(
@@ -63,7 +119,8 @@ public final class ServiceCatalog {
                     plan("netflix-premium", "프리미엄", "넷플릭스 프리미엄", 17000, BillingCycle.MONTHLY)),
             service("youtube", "유튜브 프리미엄", Category.OTT,
                     plan("youtube-individual", "개인", "유튜브 프리미엄 개인", 14900, BillingCycle.MONTHLY),
-                    plan("youtube-family", "패밀리", "유튜브 프리미엄 패밀리", 22900, BillingCycle.MONTHLY)),
+                    plan("youtube-family", "패밀리", "유튜브 프리미엄 패밀리", 22900, BillingCycle.MONTHLY),
+                    plan("youtube-student", "학생", "유튜브 프리미엄 학생", 7900, BillingCycle.MONTHLY, true)),
             service("disney", "디즈니+", Category.OTT,
                     plan("disney-standard", "스탠다드", "디즈니+ 스탠다드", 9900, BillingCycle.MONTHLY),
                     plan("disney-premium", "프리미엄", "디즈니+ 프리미엄", 13900, BillingCycle.MONTHLY)),
@@ -92,10 +149,11 @@ public final class ServiceCatalog {
             service("spotify", "스포티파이", Category.MUSIC,
                     plan("spotify-individual", "개인", "스포티파이 개인", 10900, BillingCycle.MONTHLY),
                     plan("spotify-duo", "듀오", "스포티파이 듀오", 16350, BillingCycle.MONTHLY),
-                    plan("spotify-family", "패밀리", "스포티파이 패밀리", 19500, BillingCycle.MONTHLY)),
+                    plan("spotify-family", "패밀리", "스포티파이 패밀리", 19500, BillingCycle.MONTHLY),
+                    plan("spotify-student", "학생", "스포티파이 학생", 5900, BillingCycle.MONTHLY, true)),
             service("apple-music", "애플 뮤직", Category.MUSIC,
                     plan("apple-music-individual", "개인", "애플 뮤직 개인", 11000, BillingCycle.MONTHLY),
-                    plan("apple-music-student", "학생", "애플 뮤직 학생", 6500, BillingCycle.MONTHLY),
+                    plan("apple-music-student", "학생", "애플 뮤직 학생", 6500, BillingCycle.MONTHLY, true),
                     plan("apple-music-family", "가족", "애플 뮤직 가족", 16500, BillingCycle.MONTHLY)),
             service("melon", "멜론", Category.MUSIC,
                     plan("melon-streaming", "스트리밍", "멜론 스트리밍", 6900, BillingCycle.MONTHLY),
@@ -109,9 +167,11 @@ public final class ServiceCatalog {
             service("bugs", "벅스", Category.MUSIC,
                     plan("bugs-monthly", "스트리밍", "벅스", 6900, BillingCycle.MONTHLY)),
             service("tidal", "TIDAL", Category.MUSIC,
-                    plan("tidal-monthly", "HiFi", "TIDAL", 13900, BillingCycle.MONTHLY)),
+                    plan("tidal-monthly", "HiFi", "TIDAL", 13900, BillingCycle.MONTHLY),
+                    plan("tidal-yearly", "HiFi 연간", "TIDAL (연간)", 139000, BillingCycle.YEARLY)),
             service("deezer", "Deezer", Category.MUSIC,
-                    plan("deezer-monthly", "Premium", "Deezer", 11900, BillingCycle.MONTHLY)),
+                    plan("deezer-monthly", "Premium", "Deezer", 11900, BillingCycle.MONTHLY),
+                    plan("deezer-yearly", "Premium 연간", "Deezer (연간)", 119000, BillingCycle.YEARLY)),
 
             /* 생산성 / 업무 */
             service("notion", "노션", Category.PRODUCTIVITY,
@@ -126,23 +186,31 @@ public final class ServiceCatalog {
             service("zoom", "Zoom", Category.PRODUCTIVITY,
                     plan("zoom-pro", "Pro", "Zoom Pro", 18000, BillingCycle.MONTHLY)),
             service("dropbox", "Dropbox", Category.PRODUCTIVITY,
-                    plan("dropbox-plus", "Plus", "Dropbox Plus", 15000, BillingCycle.MONTHLY)),
+                    plan("dropbox-plus", "Plus", "Dropbox Plus", 15000, BillingCycle.MONTHLY),
+                    plan("dropbox-plus-yearly", "Plus 연간", "Dropbox Plus (연간)", 150000, BillingCycle.YEARLY)),
             service("microsoft-365", "Microsoft 365", Category.PRODUCTIVITY,
                     plan("microsoft-365-personal", "Personal", "Microsoft 365 Personal", 11900, BillingCycle.MONTHLY),
-                    plan("microsoft-365-family", "Family", "Microsoft 365 Family", 15900, BillingCycle.MONTHLY)),
+                    plan("microsoft-365-family", "Family", "Microsoft 365 Family", 15900, BillingCycle.MONTHLY),
+                    plan("microsoft-365-personal-yearly", "Personal 연간", "Microsoft 365 Personal (연간)", 119000, BillingCycle.YEARLY)),
             service("adobe-creative-cloud", "Adobe Creative Cloud", Category.PRODUCTIVITY,
                     plan("adobe-photography", "Photography", "Adobe Photography", 13000, BillingCycle.MONTHLY),
-                    plan("adobe-all-apps", "All Apps", "Adobe All Apps", 62000, BillingCycle.MONTHLY)),
+                    plan("adobe-all-apps", "All Apps", "Adobe All Apps", 62000, BillingCycle.MONTHLY),
+                    plan("adobe-all-apps-yearly", "All Apps 연간", "Adobe All Apps (연간)", 660000, BillingCycle.YEARLY)),
             service("canva", "Canva", Category.PRODUCTIVITY,
-                    plan("canva-pro", "Pro", "Canva Pro", 15000, BillingCycle.MONTHLY)),
+                    plan("canva-pro", "Pro", "Canva Pro", 15000, BillingCycle.MONTHLY),
+                    plan("canva-pro-yearly", "Pro 연간", "Canva Pro (연간)", 150000, BillingCycle.YEARLY)),
             service("miro", "Miro", Category.PRODUCTIVITY,
-                    plan("miro-starter", "Starter", "Miro Starter", 10000, BillingCycle.MONTHLY)),
+                    plan("miro-starter", "Starter", "Miro Starter", 10000, BillingCycle.MONTHLY),
+                    plan("miro-starter-yearly", "Starter 연간", "Miro Starter (연간)", 96000, BillingCycle.YEARLY)),
             service("todoist", "Todoist", Category.PRODUCTIVITY,
-                    plan("todoist-pro", "Pro", "Todoist Pro", 6000, BillingCycle.MONTHLY)),
+                    plan("todoist-pro", "Pro", "Todoist Pro", 6000, BillingCycle.MONTHLY),
+                    plan("todoist-pro-yearly", "Pro 연간", "Todoist Pro (연간)", 60000, BillingCycle.YEARLY)),
             service("evernote", "Evernote", Category.PRODUCTIVITY,
-                    plan("evernote-professional", "Professional", "Evernote Professional", 8000, BillingCycle.MONTHLY)),
+                    plan("evernote-professional", "Professional", "Evernote Professional", 8000, BillingCycle.MONTHLY),
+                    plan("evernote-professional-yearly", "Professional 연간", "Evernote Professional (연간)", 80000, BillingCycle.YEARLY)),
             service("grammarly", "Grammarly", Category.PRODUCTIVITY,
-                    plan("grammarly-premium", "Premium", "Grammarly Premium", 18000, BillingCycle.MONTHLY)),
+                    plan("grammarly-premium", "Premium", "Grammarly Premium", 18000, BillingCycle.MONTHLY),
+                    plan("grammarly-premium-yearly", "Premium 연간", "Grammarly Premium (연간)", 180000, BillingCycle.YEARLY)),
             service("github-copilot", "GitHub Copilot", Category.PRODUCTIVITY,
                     plan("github-copilot-individual", "Individual", "GitHub Copilot", 13000, BillingCycle.MONTHLY)),
             service("claude", "Claude", Category.PRODUCTIVITY,
@@ -152,18 +220,21 @@ public final class ServiceCatalog {
             service("gemini", "Google Gemini", Category.PRODUCTIVITY,
                     plan("gemini-ai-pro", "Google AI Pro", "Google AI Pro", 29000, BillingCycle.MONTHLY)),
             service("1password", "1Password", Category.PRODUCTIVITY,
-                    plan("1password-individual", "Individual", "1Password", 4500, BillingCycle.MONTHLY)),
+                    plan("1password-individual", "Individual", "1Password", 4500, BillingCycle.MONTHLY),
+                    plan("1password-individual-yearly", "Individual 연간", "1Password (연간)", 45000, BillingCycle.YEARLY)),
             service("cursor", "Cursor", Category.PRODUCTIVITY,
                     plan("cursor-pro", "Pro", "Cursor Pro", 29000, BillingCycle.MONTHLY)),
             service("linear", "Linear", Category.PRODUCTIVITY,
-                    plan("linear-basic", "Basic", "Linear Basic", 10000, BillingCycle.MONTHLY)),
+                    plan("linear-basic", "Basic", "Linear Basic", 10000, BillingCycle.MONTHLY),
+                    plan("linear-basic-yearly", "Basic 연간", "Linear Basic (연간)", 100000, BillingCycle.YEARLY)),
             service("microsoft-copilot", "Microsoft Copilot", Category.PRODUCTIVITY,
                     plan("microsoft-copilot-pro", "Pro", "Microsoft Copilot Pro", 29000, BillingCycle.MONTHLY)),
 
             /* 교육 / 도서 */
             service("duolingo", "Duolingo", Category.EDUCATION,
                     plan("duolingo-super", "Super", "Duolingo Super", 9900, BillingCycle.MONTHLY),
-                    plan("duolingo-family", "Family", "Duolingo Family", 15900, BillingCycle.MONTHLY)),
+                    plan("duolingo-family", "Family", "Duolingo Family", 15900, BillingCycle.MONTHLY),
+                    plan("duolingo-super-yearly", "Super 연간", "Duolingo Super (연간)", 99000, BillingCycle.YEARLY)),
             service("coursera", "Coursera", Category.EDUCATION,
                     plan("coursera-plus", "Plus", "Coursera Plus", 59000, BillingCycle.MONTHLY)),
             service("udemy", "Udemy", Category.EDUCATION,
@@ -224,6 +295,7 @@ public final class ServiceCatalog {
 
     private static ServiceCatalogResponse service(String id, String name, Category category, ServicePlanResponse... plans) {
         Brand brand = BRANDS.get(id);
+        CancelGuide cancelGuide = CANCEL_GUIDES.get(id);
 
         return ServiceCatalogResponse.builder()
                 .id(id)
@@ -232,12 +304,20 @@ public final class ServiceCatalog {
                 .categoryDescription(category.getDescription())
                 .categoryColor(category.getColor())
                 .logo(brand != null ? brand.logo() : null)
+                .logoType(brand != null ? brand.logoType() : null)
+                .cancelGuide(cancelGuide != null ? cancelGuide.guide() : null)
+                .cancelUrl(cancelGuide != null ? cancelGuide.url() : null)
                 .brandColor(brand != null ? brand.color() : null)
                 .plans(List.of(plans))
                 .build();
     }
 
     private static ServicePlanResponse plan(String id, String name, String displayName, long fee, BillingCycle billingCycle) {
+        return plan(id, name, displayName, fee, billingCycle, false);
+    }
+
+    private static ServicePlanResponse plan(String id, String name, String displayName, long fee,
+                                            BillingCycle billingCycle, boolean student) {
         return ServicePlanResponse.builder()
                 .id(id)
                 .name(name)
@@ -245,9 +325,21 @@ public final class ServiceCatalog {
                 .fee(BigDecimal.valueOf(fee))
                 .billingCycle(billingCycle)
                 .billingCycleDescription(billingCycle.getDescription())
+                .student(student)
                 .build();
     }
 
-    private record Brand(String logo, String color) {
+    private record CancelGuide(String guide, String url) {
+    }
+
+    private record Brand(String logo, String color, String logoType) {
+    }
+
+    private static Brand svg(String logo, String color) {
+        return new Brand(logo, color, "svg");
+    }
+
+    private static Brand png(String logo, String color) {
+        return new Brand(logo, color, "png");
     }
 }
