@@ -617,6 +617,85 @@ function renderMonthPayments(events) {
 }
 
 /* --------------------------------------------------------------------------
+   Shared with me
+   -------------------------------------------------------------------------- */
+
+function formatWon(value) {
+    return `${Number(value || 0).toLocaleString('ko-KR')}원`;
+}
+
+async function loadShared() {
+    try {
+        const res = await fetch(`/api/shares/shared?period=${currentPeriod()}`);
+        if (!res.ok) return;
+        const shares = await res.json();
+        renderInvitations(shares.filter(share => share.status === 'PENDING'));
+        renderActiveShares(shares.filter(share => share.status === 'ACTIVE'));
+    } catch (e) {
+        console.error('공유 구독을 불러오지 못했습니다.', e);
+    }
+}
+
+function renderInvitations(shares) {
+    const box = document.getElementById('shareInvitations');
+    if (!box) return;
+    box.innerHTML = shares.length === 0
+        ? '<div class="sf-empty-line">초대받은 구독이 없습니다.</div>'
+        : shares.map(share => `
+            <div class="sf-share-row">
+                <div class="sf-share-main">
+                    <div class="sf-share-name">${escapeHtml(share.serviceName)}</div>
+                    <div class="sf-share-amount">내 분담 ${formatWon(share.shareAmount)} · 다음 결제 ${escapeHtml(share.nextBillingDate)}</div>
+                </div>
+                <div class="sf-share-actions">
+                    <button type="button" class="sf-btn sf-btn-primary sf-btn-sm" onclick="acceptInvitation(${share.shareId})">수락</button>
+                    <button type="button" class="sf-btn sf-btn-ghost sf-btn-sm" onclick="declineInvitation(${share.shareId})">거절</button>
+                </div>
+            </div>`).join('');
+}
+
+function renderActiveShares(shares) {
+    const box = document.getElementById('shareActive');
+    if (!box) return;
+    box.innerHTML = shares.length === 0
+        ? '<div class="sf-empty-line">참여 중인 공유 구독이 없습니다.</div>'
+        : shares.map(share => `
+            <div class="sf-share-row">
+                <input type="checkbox" class="form-check-input" ${share.memberPaid ? 'checked' : ''}
+                       aria-label="${escapeHtml(share.serviceName)} 송금 완료"
+                       onchange="toggleMyPayment(${share.shareId}, this.checked)">
+                <div class="sf-share-main">
+                    <div class="sf-share-name">${escapeHtml(share.serviceName)}</div>
+                    <div class="sf-share-amount">
+                        내 분담 ${formatWon(share.shareAmount)} ·
+                        ${share.confirmed ? '소유자 확인 완료' : '확인 대기'} ·
+                        다음 결제 ${escapeHtml(share.nextBillingDate)}
+                    </div>
+                </div>
+            </div>`).join('');
+}
+
+async function acceptInvitation(shareId) {
+    await fetch(`/api/shares/${shareId}/accept`, { method: 'POST' });
+    await loadShared();
+}
+
+async function declineInvitation(shareId) {
+    if (!confirm('초대를 거절할까요?')) return;
+    await fetch(`/api/shares/${shareId}/decline`, { method: 'POST' });
+    await loadShared();
+}
+
+async function toggleMyPayment(shareId, paid) {
+    await fetch(`/api/shares/${shareId}/payment`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ period: currentPeriod(), paid })
+    });
+    await loadShared();
+}
+
+/* --------------------------------------------------------------------------
    Insights (savings / duplicates)
    -------------------------------------------------------------------------- */
 
@@ -764,9 +843,16 @@ async function loadShares() {
     }
 }
 
+function shareStatusLabel(status) {
+    if (status === 'PENDING') return '초대 대기';
+    if (status === 'DECLINED') return '거절';
+    return '참여 중';
+}
+
 function renderShares(shares) {
-    const total = shares.reduce((sum, share) => sum + Number(share.shareAmount), 0);
-    const received = shares
+    const active = shares.filter(share => share.status === 'ACTIVE');
+    const total = active.reduce((sum, share) => sum + Number(share.shareAmount), 0);
+    const received = active
         .filter(share => share.settled)
         .reduce((sum, share) => sum + Number(share.shareAmount), 0);
 
@@ -775,18 +861,30 @@ function renderShares(shares) {
 
     document.getElementById('shareList').innerHTML = shares.length === 0
         ? '<div class="sf-empty-line">아직 함께 쓰는 멤버가 없습니다.</div>'
-        : shares.map(share => `
+        : shares.map(share => {
+            const activeShare = share.status === 'ACTIVE';
+            const paidLabel = share.memberPaid ? '송금 완료' : '미송금';
+            return `
             <div class="sf-share-row">
                 <input type="checkbox" class="form-check-input" ${share.settled ? 'checked' : ''}
-                       aria-label="${escapeHtml(share.memberName)} 정산 완료"
+                       ${activeShare ? '' : 'disabled'}
+                       aria-label="${escapeHtml(share.memberName)} 정산 확인"
+                       title="정산 확인"
                        onchange="toggleShareSettle(${share.id}, this.checked)">
                 <div class="sf-share-main">
-                    <div class="sf-share-name">${escapeHtml(share.memberName)}</div>
-                    <div class="sf-share-amount">${Number(share.shareAmount).toLocaleString('ko-KR')}원</div>
+                    <div class="sf-share-name">${escapeHtml(share.memberName)}
+                        <span class="sf-share-status">${shareStatusLabel(share.status)}</span>
+                    </div>
+                    <div class="sf-share-amount">
+                        ${Number(share.shareAmount).toLocaleString('ko-KR')}원
+                        ${share.memberEmail ? ` · ${escapeHtml(share.memberEmail)}` : ''}
+                        ${activeShare ? ` · ${paidLabel}` : ''}
+                    </div>
                 </div>
                 <button type="button" class="sf-icon-btn" aria-label="${escapeHtml(share.memberName)} 삭제"
                         onclick="removeShare(${share.id})"><i class="bi bi-x-lg"></i></button>
-            </div>`).join('');
+            </div>`;
+        }).join('');
 }
 
 function showShareError(message) {
@@ -799,6 +897,7 @@ async function addShare(event) {
     event.preventDefault();
     const memberName = document.getElementById('shareMemberName').value.trim();
     const shareAmount = document.getElementById('shareAmount').value;
+    const memberEmail = document.getElementById('shareMemberEmail').value.trim();
 
     if (!memberName || !shareAmount) {
         showShareError('멤버 이름과 분담 금액을 입력해 주세요.');
@@ -810,7 +909,7 @@ async function addShare(event) {
         const res = await fetch(`/api/subscriptions/${shareState.subscriptionId}/shares`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ memberName, shareAmount: Number(shareAmount) })
+            body: JSON.stringify({ memberName, shareAmount: Number(shareAmount), memberEmail: memberEmail || null })
         });
         if (!res.ok) {
             const error = await res.json().catch(() => ({}));
@@ -819,6 +918,7 @@ async function addShare(event) {
         }
         document.getElementById('shareMemberName').value = '';
         document.getElementById('shareAmount').value = '';
+        document.getElementById('shareMemberEmail').value = '';
         await loadShares();
     } catch (e) {
         showShareError('멤버를 추가하지 못했습니다.');

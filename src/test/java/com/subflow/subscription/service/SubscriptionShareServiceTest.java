@@ -7,7 +7,10 @@ import com.subflow.subscription.domain.Category;
 import com.subflow.subscription.domain.SettlementRecord;
 import com.subflow.subscription.domain.Subscription;
 import com.subflow.subscription.domain.SubscriptionShare;
+import com.subflow.subscription.domain.ShareStatus;
+import com.subflow.subscription.dto.MemberShareResponse;
 import com.subflow.subscription.dto.ShareCreateRequest;
+import com.subflow.subscription.dto.SharePaymentRequest;
 import com.subflow.subscription.dto.ShareResponse;
 import com.subflow.subscription.dto.ShareSettleRequest;
 import com.subflow.subscription.dto.ShareSummaryResponse;
@@ -84,10 +87,83 @@ class SubscriptionShareServiceTest {
         given(subscriptionFinder.findOwnedById(1L)).willReturn(subscription());
         given(shareRepository.existsBySubscriptionIdAndMemberNameIgnoreCase(1L, "민수")).willReturn(true);
 
-        assertThatThrownBy(() -> shareService.addShare(1L, new ShareCreateRequest("민수", new BigDecimal("5000"))))
+        assertThatThrownBy(() -> shareService.addShare(1L, new ShareCreateRequest("민수", new BigDecimal("5000"), null)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.DUPLICATE_SHARE_MEMBER);
+    }
+
+    @Test
+    @DisplayName("이메일을 입력하면 초대 대기 상태로 추가한다")
+    void createsPendingInvitation() {
+        given(subscriptionFinder.findOwnedById(1L)).willReturn(subscription());
+        given(shareRepository.save(any(SubscriptionShare.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        ShareResponse response = shareService.addShare(1L,
+                new ShareCreateRequest("민수", new BigDecimal("8500"), "m@b.com"));
+
+        assertThat(response.status()).isEqualTo(ShareStatus.PENDING);
+        assertThat(response.memberEmail()).isEqualTo("m@b.com");
+    }
+
+    @Test
+    @DisplayName("초대받은 사용자는 초대를 수락할 수 있다")
+    void acceptsInvitation() {
+        SubscriptionShare share = pendingShare(10L, "m@b.com");
+        given(shareRepository.findById(10L)).willReturn(Optional.of(share));
+        given(subscriptionFinder.currentOwnerEmail()).willReturn("m@b.com");
+
+        shareService.acceptInvitation(10L);
+
+        assertThat(share.getStatus()).isEqualTo(ShareStatus.ACTIVE);
+    }
+
+    @Test
+    @DisplayName("다른 사람의 초대는 수락할 수 없다")
+    void rejectsInvitationForOtherUser() {
+        SubscriptionShare share = pendingShare(10L, "m@b.com");
+        given(shareRepository.findById(10L)).willReturn(Optional.of(share));
+        given(subscriptionFinder.currentOwnerEmail()).willReturn("other@b.com");
+
+        assertThatThrownBy(() -> shareService.acceptInvitation(10L))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.SHARE_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("멤버가 송금 완료를 표시하면 정산 기록이 저장된다")
+    void marksMemberPayment() {
+        SubscriptionShare share = share(10L, subscription(), "민수", "8500");
+        ReflectionTestUtils.setField(share, "memberEmail", "m@b.com");
+        ReflectionTestUtils.setField(share, "status", ShareStatus.ACTIVE);
+        given(shareRepository.findById(10L)).willReturn(Optional.of(share));
+        given(subscriptionFinder.currentOwnerEmail()).willReturn("m@b.com");
+        given(settlementRepository.findByShareIdAndPeriod(10L, PERIOD)).willReturn(Optional.empty());
+
+        shareService.markPayment(10L, new SharePaymentRequest(PERIOD, true));
+
+        then(settlementRepository).should().save(any(SettlementRecord.class));
+    }
+
+    @Test
+    @DisplayName("나에게 공유된 구독 목록을 반환한다")
+    void listsSharedWithMe() {
+        SubscriptionShare share = share(10L, subscription(), "민수", "8500");
+        ReflectionTestUtils.setField(share, "memberEmail", "m@b.com");
+        ReflectionTestUtils.setField(share, "status", ShareStatus.ACTIVE);
+        given(subscriptionFinder.currentOwnerEmail()).willReturn("m@b.com");
+        given(shareRepository.findAllByMemberEmailIgnoreCaseOrderByIdAsc("m@b.com"))
+                .willReturn(List.of(share));
+        given(settlementRepository.findAllByShareIdInAndPeriod(anyCollection(), eq(PERIOD)))
+                .willReturn(List.of());
+
+        List<MemberShareResponse> shared = shareService.getSharedWithMe(PERIOD);
+
+        assertThat(shared).hasSize(1);
+        assertThat(shared.get(0).serviceName()).isEqualTo("넷플릭스 프리미엄");
+        assertThat(shared.get(0).memberPaid()).isFalse();
     }
 
     @Test
@@ -161,6 +237,13 @@ class SubscriptionShareServiceTest {
                 .shareAmount(new BigDecimal(amount))
                 .build();
         ReflectionTestUtils.setField(share, "id", id);
+        return share;
+    }
+
+    private SubscriptionShare pendingShare(Long id, String memberEmail) {
+        SubscriptionShare share = share(id, subscription(), "민수", "8500");
+        ReflectionTestUtils.setField(share, "memberEmail", memberEmail);
+        ReflectionTestUtils.setField(share, "status", ShareStatus.PENDING);
         return share;
     }
 

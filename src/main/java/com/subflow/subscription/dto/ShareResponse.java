@@ -1,5 +1,7 @@
 package com.subflow.subscription.dto;
 
+import com.subflow.subscription.domain.ShareStatus;
+
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
@@ -8,6 +10,10 @@ public record ShareResponse(
         String memberName,
         BigDecimal shareAmount,
         boolean settled,
-        LocalDate settledAt
+        LocalDate settledAt,
+        String memberEmail,
+        ShareStatus status,
+        boolean memberPaid,
+        LocalDate memberPaidAt
 ) {
 }

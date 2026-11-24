@@ -25,6 +25,7 @@ public enum ErrorCode {
     INVALID_BIRTH_YEAR(HttpStatus.BAD_REQUEST, "출생연도가 올바르지 않습니다."),
     FILE_SIZE_EXCEEDED(HttpStatus.PAYLOAD_TOO_LARGE, "파일 크기는 5MB를 넘을 수 없습니다."),
     INVALID_COLUMN_MAPPING(HttpStatus.BAD_REQUEST, "컬럼 매핑이 올바르지 않습니다."),
+    INVALID_SHARE_STATUS(HttpStatus.BAD_REQUEST, "처리할 수 없는 공유 상태입니다."),
     SHARE_NOT_FOUND(HttpStatus.NOT_FOUND, "공유 멤버를 찾을 수 없습니다."),
     DUPLICATE_SHARE_MEMBER(HttpStatus.BAD_REQUEST, "이미 등록된 멤버입니다."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "지원하지 않는 HTTP 메서드입니다."),

@@ -48,8 +48,8 @@ class SubscriptionShareIntegrationTest {
         Long subscriptionId = subscription.getId();
 
         ShareResponse first = shareService.addShare(subscriptionId,
-                new ShareCreateRequest("민수", new BigDecimal("8500")));
-        shareService.addShare(subscriptionId, new ShareCreateRequest("지수", new BigDecimal("8500")));
+                new ShareCreateRequest("민수", new BigDecimal("8500"), null));
+        shareService.addShare(subscriptionId, new ShareCreateRequest("지수", new BigDecimal("8500"), null));
 
         assertThat(shareService.getShares(subscriptionId, PERIOD)).hasSize(2);
         assertThat(shareService.getSummary(PERIOD).pending()).isEqualByComparingTo("17000");

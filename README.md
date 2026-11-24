@@ -17,6 +17,7 @@
   - 같은 용도의 중복 구독 탐지 (음악, 클라우드, AI)
 - **해지 안내**: 서비스별 해지 경로와 링크
 - **공유 구독 정산**: 멤버별 분담 금액과 월 단위 정산 기록
+- **계정 연동 공유**: 이메일 초대 → 수락 → 참여 중인 구독 확인, 양방향 정산(송금 완료/소유자 확인)
 - **Google 로그인·온보딩**: Google 단일 로그인, 최초 로그인 시 맞춤 혜택용 정보 입력
 - **개인정보 보호**: 동의 기록, 개인정보 처리방침·이용약관, 회원 탈퇴
 - **배치 시뮬레이션**: 결제 갱신, 알림 발송, 만료 처리 (`local` 전용)
@@ -117,6 +118,7 @@ Flyway를 사용합니다. (`src/main/resources/db/migration`)
 | `V1__init_schema.sql` | 구독, 결제 기록, 알림 이력 |
 | `V2__subscription_shares.sql` | 공유 구독 멤버, 월별 정산 기록 |
 | `V3__users.sql` | Google 사용자, 동의 기록 |
+| `V4__share_invitations.sql` | 공유 이메일 초대, 멤버 송금 상태 |
 
 ## API 요약
 
@@ -131,7 +133,11 @@ Flyway를 사용합니다. (`src/main/resources/db/migration`)
 | GET/PUT/DELETE | `/api/me` | 내 프로필 조회/수정/탈퇴 |
 | POST | `/api/me/onboarding` | 온보딩 제출 |
 | GET/POST | `/api/subscriptions/{id}/shares` | 공유 멤버 목록/추가 |
-| PUT | `/api/shares/{id}/settlement` | 월별 정산 완료 처리 |
+| PUT | `/api/shares/{id}/settlement` | 소유자 정산 확인 |
+| POST | `/api/shares/{id}/accept` | 공유 초대 수락 |
+| POST | `/api/shares/{id}/decline` | 공유 초대 거절 |
+| PUT | `/api/shares/{id}/payment` | 멤버 송금 완료 표시 |
+| GET | `/api/shares/shared` | 나에게 공유된 구독 |
 | GET | `/api/shares/summary` | 받은 금액/남은 금액 요약 |
 
 ## 인증
