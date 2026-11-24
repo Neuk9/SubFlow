@@ -23,6 +23,11 @@ public class PageController {
         return "onboarding";
     }
 
+    @GetMapping("/settings")
+    public String settings() {
+        return "settings";
+    }
+
     @GetMapping("/privacy")
     public String privacy() {
         return "privacy";

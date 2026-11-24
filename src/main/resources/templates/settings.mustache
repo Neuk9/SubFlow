@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <title>SubFlow - 설정</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+    <link rel="stylesheet" href="/css/app.css?v=20261125q">
+</head>
+<body class="sf-auth-body">
+<main class="sf-auth-card sf-auth-card-wide">
+    <div class="sf-settings-head">
+        <h1 class="sf-auth-brand">설정</h1>
+        <a class="sf-btn sf-btn-ghost sf-btn-sm" href="/">돌아가기</a>
+    </div>
+
+    <section class="sf-settings-section">
+        <h2>내 정보</h2>
+        <dl class="sf-profile-list" id="profileSummary">
+            <div><dt>불러오는 중…</dt><dd></dd></div>
+        </dl>
+        <a class="sf-btn sf-btn-ghost sf-btn-sm" href="/onboarding">프로필 수정</a>
+    </section>
+
+    <section class="sf-settings-section">
+        <h2>수신 동의</h2>
+        <label class="sf-switch-row">
+            <span>혜택·이벤트 알림 (선택)</span>
+            <input type="checkbox" class="form-check-input" id="marketingAgreed"
+                   onchange="updateConsent('MARKETING', this.checked)">
+        </label>
+        <label class="sf-switch-row">
+            <span>결제·정산 알림 (선택)</span>
+            <input type="checkbox" class="form-check-input" id="notificationAgreed"
+                   onchange="updateConsent('NOTIFICATION', this.checked)">
+        </label>
+        <p class="sf-field-hint">동의를 거부해도 서비스 이용에는 제한이 없습니다.</p>
+    </section>
+
+    <section class="sf-settings-section">
+        <h2>내 데이터</h2>
+        <p class="sf-field-hint">프로필, 동의 기록, 구독·결제·공유 데이터를 JSON으로 내려받습니다.</p>
+        <a class="sf-btn sf-btn-ghost" href="/api/me/data" download>데이터 내려받기</a>
+    </section>
+
+    <section class="sf-settings-section sf-danger-zone">
+        <h2>회원 탈퇴</h2>
+        <p class="sf-field-hint">탈퇴하면 구독·결제·공유·동의 데이터가 즉시 파기됩니다.</p>
+        <div class="sf-delete-row">
+            <input type="text" class="form-control" id="deleteConfirmation" placeholder='확인을 위해 "탈퇴"를 입력하세요'>
+            <button type="button" class="sf-btn sf-btn-danger" onclick="deleteAccount()">탈퇴</button>
+        </div>
+    </section>
+
+    <div class="sf-error d-none" id="settingsError" role="alert"></div>
+</main>
+
+<script src="/js/settings.js?v=20261125q"></script>
+</body>
+</html>

@@ -7,7 +7,9 @@ import com.subflow.user.domain.Membership;
 import com.subflow.user.domain.Occupation;
 import com.subflow.user.dto.OnboardingRequest;
 import com.subflow.user.dto.ProfileResponse;
+import com.subflow.user.dto.DataExportResponse;
 import com.subflow.user.service.AccountDeletionService;
+import com.subflow.user.service.DataExportService;
 import com.subflow.user.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,6 +35,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,6 +51,9 @@ class UserControllerTest {
 
     @Mock
     private AccountDeletionService accountDeletionService;
+
+    @Mock
+    private DataExportService dataExportService;
 
     @Mock
     private CurrentUserProvider currentUserProvider;
@@ -123,6 +129,32 @@ class UserControllerTest {
     }
 
     @Test
+    @DisplayName("선택 동의를 변경한다")
+    void updatesConsent() throws Exception {
+        given(userService.updateConsent(eq(EMAIL), any())).willReturn(profile(true));
+
+        mockMvc.perform(put("/api/me/consents")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"type\":\"MARKETING\",\"agreed\":true}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("내 데이터를 JSON 첨부로 내려받는다")
+    void exportsData() throws Exception {
+        given(dataExportService.export(EMAIL)).willReturn(new DataExportResponse(
+                java.time.LocalDateTime.now(), profile(true),
+                java.util.List.of(), java.util.List.of(), java.util.List.of(),
+                java.util.List.of(), java.util.List.of()));
+
+        mockMvc.perform(get("/api/me/data"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .header().string("Content-Disposition", containsString("subflow-data.json")))
+                .andExpect(jsonPath("$.profile.email").value(EMAIL));
+    }
+
+    @Test
     @DisplayName("탈퇴 확인 문구가 다르면 400을 반환한다")
     void rejectsWrongConfirmation() throws Exception {
         mockMvc.perform(delete("/api/me")
@@ -148,6 +180,6 @@ class UserControllerTest {
     private ProfileResponse profile(boolean completed) {
         return new ProfileResponse(1L, EMAIL, "늑구", "pic",
                 2002, Occupation.UNIVERSITY, 2,
-                Set.of(Category.OTT), Set.of(Membership.SKT), completed, false);
+                Set.of(Category.OTT), Set.of(Membership.SKT), completed, false, false);
     }
 }

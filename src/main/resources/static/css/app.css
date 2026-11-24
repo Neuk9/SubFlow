@@ -2938,3 +2938,19 @@ body { font-size: 16px; }
 .sf-share-actions { display: flex; gap: 6px; flex: 0 0 auto; }
 .sf-share-form { grid-template-columns: minmax(0, 1fr) 110px minmax(0, 1fr) auto; }
 @media (max-width: 720px) { .sf-share-form { grid-template-columns: minmax(0, 1fr); } }
+
+/* Settings */
+.sf-settings-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.sf-settings-section { padding: 22px 0; border-top: 1px solid var(--sf-border); }
+.sf-settings-section h2 { margin: 0 0 12px; font-size: 16px; font-weight: 700; }
+.sf-profile-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 18px; margin: 0 0 16px; }
+.sf-profile-list dt { color: var(--sf-muted); font-size: 12.5px; }
+.sf-profile-list dd { margin: 3px 0 0; color: var(--sf-text); font-size: 14px; }
+.sf-switch-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; color: var(--sf-text-2); font-size: 14px; }
+.sf-switch-row input { width: 20px; height: 20px; accent-color: var(--sf-primary); }
+.sf-danger-zone { border-top-color: #3a1f1f; }
+.sf-delete-row { display: flex; gap: 8px; }
+.sf-delete-row .form-control { flex: 1; }
+.sf-btn-danger { background: var(--sf-danger); color: #ffffff; }
+.sf-btn-danger:hover { background: #e03b31; color: #ffffff; }
+@media (max-width: 560px) { .sf-profile-list { grid-template-columns: minmax(0, 1fr); } .sf-delete-row { flex-direction: column; } }
