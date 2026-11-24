@@ -1,5 +1,6 @@
 package com.subflow.global.config;
 
+import com.subflow.global.auth.CurrentUserProvider;
 import com.subflow.global.auth.CustomOAuth2UserService;
 import com.subflow.global.auth.CustomOidcUserService;
 import com.subflow.global.auth.OAuth2LoginSuccessHandler;
@@ -8,11 +9,14 @@ import com.subflow.global.security.ApiAccessDeniedHandler;
 import com.subflow.global.security.ApiAuthenticationEntryPoint;
 import com.subflow.global.security.AuthMode;
 import com.subflow.global.security.AuthProperties;
+import com.subflow.global.security.ClientIpResolver;
 import com.subflow.global.security.DemoAuthenticationFilter;
 import com.subflow.global.security.JsonBodySizeLimitFilter;
 import com.subflow.global.security.OriginVerifierFilter;
+import com.subflow.global.security.RequestThrottleFilter;
 import com.subflow.global.security.SecurityPaths;
 import com.subflow.global.security.SecurityProperties;
+import com.subflow.global.security.SlidingWindowLimiter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -27,6 +31,7 @@ import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWrite
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import tools.jackson.databind.ObjectMapper;
 
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,7 +52,9 @@ public class SecurityConfig {
             ObjectMapper objectMapper,
             CustomOAuth2UserService customOAuth2UserService,
             CustomOidcUserService customOidcUserService,
-            OAuth2LoginSuccessHandler oauth2LoginSuccessHandler) throws Exception {
+            OAuth2LoginSuccessHandler oauth2LoginSuccessHandler,
+            CurrentUserProvider currentUserProvider,
+            Clock clock) throws Exception {
 
         AuthMode mode = authProperties.mode();
         RequestMatcher apiRequestMatcher = request -> request.getRequestURI().startsWith("/api/");
@@ -92,6 +99,15 @@ public class SecurityConfig {
             http.addFilterBefore(new DemoAuthenticationFilter(), AnonymousAuthenticationFilter.class);
         }
         http.addFilterAfter(new NoStoreFilter(), AnonymousAuthenticationFilter.class);
+        // demo 인증 주입 후 실행되어 인증 사용자를 이메일 키로 식별한다.
+        http.addFilterAfter(
+                new RequestThrottleFilter(
+                        securityProperties.rateLimit().enabled(),
+                        new SlidingWindowLimiter(clock),
+                        new ClientIpResolver(securityProperties.trustCloudflareHeaders()),
+                        currentUserProvider,
+                        objectMapper),
+                AnonymousAuthenticationFilter.class);
 
         http.authorizeHttpRequests(auth -> auth
                 .requestMatchers(publicPaths.toArray(String[]::new)).permitAll()
