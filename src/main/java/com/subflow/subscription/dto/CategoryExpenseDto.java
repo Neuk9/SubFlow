@@ -1,5 +1,6 @@
 package com.subflow.subscription.dto;
 
+import com.subflow.global.common.MoneyFormatter;
 import com.subflow.subscription.domain.Category;
 import lombok.Builder;
 import lombok.Getter;
@@ -15,4 +16,12 @@ public class CategoryExpenseDto {
     private BigDecimal amount;
     private long count;
     private double percentage;
+
+    public String getAmountFormatted() {
+        return MoneyFormatter.format(amount);
+    }
+
+    public String getColor() {
+        return CalendarEventDto.getColorForCategory(category);
+    }
 }

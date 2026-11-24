@@ -128,3 +128,7 @@ src/main/resources/
   application*.yml # 프로필별 설정
 src/test/java/com/subflow/
 ```
+
+## 브랜드 로고
+
+`src/main/resources/static/logos/`의 서비스 로고는 [simple-icons](https://simpleicons.org) 16.38.1 (CC0 1.0)에서 가져왔습니다. 각 상표는 해당 소유자에게 있으며, SubFlow는 이들과 제휴하거나 보증받지 않았습니다. 로고는 구독 서비스를 식별하는 목적으로만 사용합니다.
