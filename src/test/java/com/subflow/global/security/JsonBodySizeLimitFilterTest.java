@@ -34,6 +34,36 @@ class JsonBodySizeLimitFilterTest {
     }
 
     @Test
+    @DisplayName("application/*+json 본문이 1MB를 넘으면 413으로 거부한다")
+    void rejectsOversizedVendorJsonByContentLength() throws Exception {
+        MockHttpServletRequest request = jsonRequest("/api/subscriptions/1",
+                "application/merge-patch+json;charset=UTF-8", new byte[(int) MAX_BYTES + 1]);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean invoked = new AtomicBoolean(false);
+
+        filter.doFilter(request, response, (req, res) -> invoked.set(true));
+
+        assertThat(invoked).isFalse();
+        assertThat(response.getStatus()).isEqualTo(413);
+        assertThat(response.getContentAsString()).contains("\"code\":\"REQUEST_TOO_LARGE\"");
+    }
+
+    @Test
+    @DisplayName("vnd.api+json 본문이 1MB를 넘으면 413으로 거부한다")
+    void rejectsOversizedVndApiJsonByContentLength() throws Exception {
+        MockHttpServletRequest request = jsonRequest("/api/subscriptions/1",
+                "application/vnd.api+json", new byte[(int) MAX_BYTES + 1]);
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicBoolean invoked = new AtomicBoolean(false);
+
+        filter.doFilter(request, response, (req, res) -> invoked.set(true));
+
+        assertThat(invoked).isFalse();
+        assertThat(response.getStatus()).isEqualTo(413);
+        assertThat(response.getContentAsString()).contains("\"code\":\"REQUEST_TOO_LARGE\"");
+    }
+
+    @Test
     @DisplayName("Content-Length가 정확히 1MB인 JSON 요청은 통과한다")
     void allowsJsonAtLimit() throws Exception {
         MockHttpServletRequest request = jsonRequest("/api/imports/confirm", new byte[(int) MAX_BYTES]);
@@ -116,8 +146,12 @@ class JsonBodySizeLimitFilterTest {
     }
 
     private MockHttpServletRequest jsonRequest(String uri, byte[] content) {
+        return jsonRequest(uri, MediaType.APPLICATION_JSON_VALUE, content);
+    }
+
+    private MockHttpServletRequest jsonRequest(String uri, String contentType, byte[] content) {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", uri);
-        request.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        request.setContentType(contentType);
         request.setContent(content);
         return request;
     }

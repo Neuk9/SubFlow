@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.web.filter.OncePerRequestFilter;
 import tools.jackson.databind.ObjectMapper;
@@ -19,9 +20,11 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 
 /**
- * {@code /api/**} 의 {@code application/json} 요청 본문을 1MB로 제한한다.
+ * {@code /api/**} 의 JSON 요청 본문을 1MB로 제한한다.
+ * {@code application/json} 뿐 아니라 {@code application/*+json} 같은 JSON 계열 미디어 타입도 포함한다.
  * Content-Length가 있으면 즉시 검사하고, 없으면(chunked) 입력 스트림을 제한해
  * 1MB를 넘는 순간 {@link BodyTooLargeException}으로 읽기를 중단한다.
  */
@@ -30,7 +33,8 @@ public class JsonBodySizeLimitFilter extends OncePerRequestFilter {
     public static final long DEFAULT_MAX_BYTES = 1024L * 1024L;
 
     private static final String API_PREFIX = "/api/";
-    private static final String JSON_CONTENT_TYPE = "application/json";
+    private static final String JSON_SUBTYPE = "json";
+    private static final String JSON_SUBTYPE_SUFFIX = "+json";
 
     private final long maxBytes;
     private final ObjectMapper objectMapper;
@@ -80,11 +84,26 @@ public class JsonBodySizeLimitFilter extends OncePerRequestFilter {
         if (uri == null || !uri.startsWith(API_PREFIX)) {
             return false;
         }
-        String contentType = request.getContentType();
+        return isJsonContentType(request.getContentType());
+    }
+
+    /**
+     * {@code application/json} 과 {@code application/*+json} 계열(예: merge-patch+json,
+     * vnd.api+json)을 JSON 요청으로 취급한다. 잘못된 Content-Type은 대상에서 제외한다.
+     */
+    private boolean isJsonContentType(String contentType) {
         if (contentType == null) {
             return false;
         }
-        return contentType.trim().toLowerCase().startsWith(JSON_CONTENT_TYPE);
+        try {
+            MediaType mediaType = MediaType.parseMediaType(contentType);
+            String subtype = mediaType.getSubtype().toLowerCase(Locale.ROOT);
+            return MediaType.APPLICATION_JSON.isCompatibleWith(mediaType)
+                    || subtype.equals(JSON_SUBTYPE)
+                    || subtype.endsWith(JSON_SUBTYPE_SUFFIX);
+        } catch (InvalidMediaTypeException e) {
+            return false;
+        }
     }
 
     private void reject(HttpServletResponse response) throws IOException {

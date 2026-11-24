@@ -79,4 +79,16 @@ class ImportConfirmValidationTest {
                 .andExpect(status().isPayloadTooLarge())
                 .andExpect(jsonPath("$.code").value("REQUEST_TOO_LARGE"));
     }
+
+    @Test
+    @DisplayName("1MB를 넘는 application/*+json 본문도 413으로 거부한다")
+    void rejectsOversizedVendorJsonBody() throws Exception {
+        String body = "{\"records\":[],\"newSubscriptions\":[],\"padding\":\""
+                + "x".repeat(1024 * 1024) + "\"}";
+        mockMvc.perform(post("/api/imports/confirm").with(csrf())
+                        .contentType("application/merge-patch+json")
+                        .content(body))
+                .andExpect(status().isPayloadTooLarge())
+                .andExpect(jsonPath("$.code").value("REQUEST_TOO_LARGE"));
+    }
 }
