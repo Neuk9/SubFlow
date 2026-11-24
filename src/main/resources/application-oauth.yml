@@ -10,10 +10,6 @@ spring:
               - email
               - profile
 
-subflow:
-  auth:
-    enabled: true
-
 logging:
   level:
     org.hibernate.SQL: warn

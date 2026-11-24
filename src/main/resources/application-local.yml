@@ -13,7 +13,15 @@ spring:
 
 subflow:
   auth:
-    enabled: false
+    mode: demo
+  security:
+    allowed-origins:
+      - http://localhost:8080
+      - http://127.0.0.1:19007
+    trust-cloudflare-headers: false
+    audit-hash-pepper: demo-pepper
+    rate-limit:
+      enabled: false
 
 logging:
   level:

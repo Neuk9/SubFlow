@@ -12,7 +12,14 @@ spring:
 
 subflow:
   auth:
-    enabled: true
+    mode: oauth
+  security:
+    allowed-origins:
+      - https://subflow.stda.app
+    trust-cloudflare-headers: true
+    audit-hash-pepper: ${AUDIT_HASH_PEPPER}
+    rate-limit:
+      enabled: true
 
 logging:
   level:
