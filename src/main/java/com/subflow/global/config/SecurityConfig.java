@@ -9,6 +9,7 @@ import com.subflow.global.security.ApiAuthenticationEntryPoint;
 import com.subflow.global.security.AuthMode;
 import com.subflow.global.security.AuthProperties;
 import com.subflow.global.security.DemoAuthenticationFilter;
+import com.subflow.global.security.JsonBodySizeLimitFilter;
 import com.subflow.global.security.OriginVerifierFilter;
 import com.subflow.global.security.SecurityPaths;
 import com.subflow.global.security.SecurityProperties;
@@ -17,6 +18,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.intercept.AuthorizationFilter;
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
@@ -59,6 +61,9 @@ public class SecurityConfig {
         http.addFilterAfter(
                 new OriginVerifierFilter(securityProperties.allowedOrigins(), objectMapper),
                 CsrfFilter.class);
+        http.addFilterBefore(
+                new JsonBodySizeLimitFilter(JsonBodySizeLimitFilter.DEFAULT_MAX_BYTES, objectMapper),
+                AuthorizationFilter.class);
 
         http.headers(headers -> {
             headers.contentTypeOptions(Customizer.withDefaults());

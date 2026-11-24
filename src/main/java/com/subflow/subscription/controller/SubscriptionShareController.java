@@ -8,8 +8,10 @@ import com.subflow.subscription.dto.ShareSettleRequest;
 import com.subflow.subscription.dto.ShareSummaryResponse;
 import com.subflow.subscription.service.SubscriptionShareService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -22,16 +24,22 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
+@Validated
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
 public class SubscriptionShareController {
 
+    private static final String PERIOD_PATTERN = "\\d{4}-(0[1-9]|1[0-2])";
+    private static final String PERIOD_MESSAGE = "조회 월은 yyyy-MM 형식이어야 합니다.";
+
     private final SubscriptionShareService shareService;
 
     @GetMapping("/subscriptions/{subscriptionId}/shares")
     public List<ShareResponse> getShares(@PathVariable Long subscriptionId,
-                                         @RequestParam(required = false) String period) {
+                                         @RequestParam(required = false)
+                                         @Pattern(regexp = PERIOD_PATTERN, message = PERIOD_MESSAGE)
+                                         String period) {
         return shareService.getShares(subscriptionId, period);
     }
 
@@ -74,12 +82,16 @@ public class SubscriptionShareController {
     }
 
     @GetMapping("/shares/shared")
-    public List<MemberShareResponse> getSharedWithMe(@RequestParam(required = false) String period) {
+    public List<MemberShareResponse> getSharedWithMe(@RequestParam(required = false)
+                                                     @Pattern(regexp = PERIOD_PATTERN, message = PERIOD_MESSAGE)
+                                                     String period) {
         return shareService.getSharedWithMe(period);
     }
 
     @GetMapping("/shares/summary")
-    public ShareSummaryResponse getSummary(@RequestParam(required = false) String period) {
+    public ShareSummaryResponse getSummary(@RequestParam(required = false)
+                                           @Pattern(regexp = PERIOD_PATTERN, message = PERIOD_MESSAGE)
+                                           String period) {
         return shareService.getSummary(period);
     }
 }
