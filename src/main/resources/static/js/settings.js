@@ -17,15 +17,6 @@ const MEMBERSHIP_LABELS = {
     BAEMIN_CLUB: '배민 클럽'
 };
 
-function escapeHtml(value) {
-    return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
-
 function extractErrorMessage(error, fallback) {
     if (error && Array.isArray(error.errors) && error.errors.length > 0 && error.errors[0].reason) {
         return error.errors[0].reason;
@@ -46,7 +37,7 @@ function hideSettingsError() {
 }
 
 function loadProfile() {
-    fetch('/api/me')
+    subflowFetch('/api/me')
         .then(res => res.ok ? res.json() : null)
         .then(profile => {
             if (!profile) {
@@ -76,7 +67,7 @@ function loadProfile() {
 async function updateConsent(type, agreed) {
     hideSettingsError();
     try {
-        const res = await fetch('/api/me/consents', {
+        const res = await subflowFetch('/api/me/consents', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ type, agreed })
@@ -103,7 +94,7 @@ async function deleteAccount() {
         return;
     }
     try {
-        const res = await fetch('/api/me', {
+        const res = await subflowFetch('/api/me', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ confirmation })
@@ -120,3 +111,10 @@ async function deleteAccount() {
 }
 
 loadProfile();
+
+document.querySelectorAll('[data-action="update-consent"]').forEach(input => {
+    input.addEventListener('change', event => {
+        updateConsent(event.target.dataset.consentType, event.target.checked);
+    });
+});
+document.querySelector('[data-action="delete-account"]').addEventListener('click', () => deleteAccount());

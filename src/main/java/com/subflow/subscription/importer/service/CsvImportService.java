@@ -25,6 +25,8 @@ import com.subflow.subscription.importer.parser.CsvParser;
 import com.subflow.subscription.importer.parser.CsvRow;
 import com.subflow.subscription.importer.parser.ParsedPayment;
 import com.subflow.subscription.importer.parser.ValueParser;
+import com.subflow.subscription.importer.validation.CsvLimits;
+import com.subflow.subscription.importer.validation.CsvUploadValidator;
 import com.subflow.subscription.repository.BillingRecordRepository;
 import com.subflow.subscription.repository.SubscriptionRepository;
 import com.subflow.subscription.service.SubscriptionCommandService;
@@ -34,7 +36,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -54,7 +55,6 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class CsvImportService {
 
-    private static final int MAX_ROWS = 5_000;
     private static final int SAMPLE_ROW_COUNT = 5;
     private static final int MAX_SKIPPED_RECORDS = 200;
 
@@ -63,6 +63,7 @@ public class CsvImportService {
     private final SubscriptionFinder subscriptionFinder;
     private final SubscriptionCommandService subscriptionCommandService;
 
+    private final CsvUploadValidator csvUploadValidator = new CsvUploadValidator();
     private final CsvParser csvParser = new CsvParser();
     private final ColumnDetector columnDetector = new ColumnDetector();
     private final SubscriptionMatcher subscriptionMatcher = new SubscriptionMatcher();
@@ -73,16 +74,16 @@ public class CsvImportService {
         CsvDocument document = parse(file);
         ColumnDetection detection = resolveDetection(document, dateColumn, merchantColumn, amountColumn, hasHeader);
 
+        int headerOffset = detection.headerRowIndex() >= 0 ? detection.headerRowIndex() + 1 : 0;
+        if (document.rows().size() - headerOffset > CsvLimits.DEFAULT.maxRows()) {
+            throw new BusinessException(ErrorCode.IMPORT_LIMIT_EXCEEDED);
+        }
+
         if (detection.needsMapping()) {
             return new ImportPreviewResponse(
                     document.encoding(), document.delimiter(), -1, true, null,
                     headers(document), sampleRows(document), 0,
                     List.of(), List.of(), 0, List.of());
-        }
-
-        int headerOffset = detection.headerRowIndex() >= 0 ? detection.headerRowIndex() + 1 : 0;
-        if (document.rows().size() - headerOffset > MAX_ROWS) {
-            throw new BusinessException(ErrorCode.IMPORT_LIMIT_EXCEEDED);
         }
 
         List<SkippedRow> skipped = new ArrayList<>();
@@ -187,18 +188,10 @@ public class CsvImportService {
     }
 
     private CsvDocument parse(MultipartFile file) {
-        byte[] content;
-        try {
-            content = file.getBytes();
-        } catch (IOException e) {
-            throw new BusinessException(ErrorCode.UNSUPPORTED_CSV);
-        }
-        if (content.length == 0) {
-            throw new BusinessException(ErrorCode.EMPTY_IMPORT_FILE);
-        }
+        byte[] content = csvUploadValidator.validate(file);
         CsvDocument document;
         try {
-            document = csvParser.parse(content);
+            document = csvParser.parse(content, CsvLimits.DEFAULT);
         } catch (UncheckedIOException | IllegalStateException e) {
             throw new BusinessException(ErrorCode.UNSUPPORTED_CSV);
         }

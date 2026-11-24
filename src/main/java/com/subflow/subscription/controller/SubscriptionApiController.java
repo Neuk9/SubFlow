@@ -15,6 +15,9 @@ import com.subflow.subscription.service.SubscriptionCommandService;
 import com.subflow.subscription.service.SubscriptionQueryService;
 import com.subflow.subscription.service.SubscriptionStatisticsService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -126,7 +129,11 @@ public class SubscriptionApiController {
      */
     @GetMapping("/calculate-preview")
     public ResponseEntity<PreviewResponse> calculatePreview(
-            @RequestParam BigDecimal fee,
+            @RequestParam
+            @DecimalMin(value = "0", message = "구독료는 0원 이상이어야 합니다.")
+            @DecimalMax(value = "1000000000", message = "구독료는 10억원 이하여야 합니다.")
+            @Digits(integer = 10, fraction = 2, message = "구독료 형식이 올바르지 않습니다.")
+            BigDecimal fee,
             @RequestParam BillingCycle billingCycle,
             @RequestParam(required = false) Integer billingDay,
             @RequestParam(required = false) LocalDate startDate) {

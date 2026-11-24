@@ -4,6 +4,7 @@ import com.subflow.subscription.domain.ShareStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record MemberShareResponse(
         Long shareId,
@@ -14,6 +15,7 @@ public record MemberShareResponse(
         boolean memberPaid,
         LocalDate memberPaidAt,
         boolean confirmed,
-        LocalDate nextBillingDate
+        LocalDate nextBillingDate,
+        LocalDateTime expiresAt
 ) {
 }

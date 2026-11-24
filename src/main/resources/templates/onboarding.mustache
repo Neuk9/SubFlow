@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="dark">
+    <meta name="_csrf" content="{{_csrf.token}}">
+    <meta name="_csrf_header" content="{{_csrf.headerName}}">
     <title>SubFlow - 시작하기</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+    <link rel="stylesheet" href="/vendor/pretendard/pretendardvariable.css">
     <link rel="stylesheet" href="/css/app.css?v=20261125r">
 </head>
 <body class="sf-auth-body">
@@ -16,7 +18,7 @@
     </div>
     <p class="sf-auth-lead">맞춤 절약 혜택을 찾기 위해 몇 가지만 알려주세요.</p>
 
-    <form id="onboardingForm" class="sf-onboarding" onsubmit="submitOnboarding(event)">
+    <form id="onboardingForm" class="sf-onboarding">
         <section class="sf-field">
             <label class="sf-field-label" for="birthYear">출생연도</label>
             <input type="number" class="form-control" id="birthYear" min="1900" max="2026" required
@@ -91,6 +93,7 @@
     </form>
 </main>
 
+<script src="/js/http.js?v=20261125r"></script>
 <script src="/js/onboarding.js?v=20261125r"></script>
 </body>
 </html>

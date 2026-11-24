@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="dark">
+    <meta name="_csrf" content="{{_csrf.token}}">
+    <meta name="_csrf_header" content="{{_csrf.headerName}}">
     <title>SubFlow - 설정</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+    <link rel="stylesheet" href="/vendor/pretendard/pretendardvariable.css">
     <link rel="stylesheet" href="/css/app.css?v=20261125r">
 </head>
 <body class="sf-auth-body">
@@ -15,6 +17,7 @@
         <div class="sf-settings-actions">
             {{#authEnabled}}
             <form method="post" action="/logout">
+                <input type="hidden" name="_csrf" value="{{_csrf.token}}">
                 <button type="submit" class="sf-btn sf-btn-ghost sf-btn-sm">로그아웃</button>
             </form>
             {{/authEnabled}}
@@ -35,12 +38,12 @@
         <label class="sf-switch-row">
             <span>혜택·이벤트 알림 (선택)</span>
             <input type="checkbox" class="form-check-input" id="marketingAgreed"
-                   onchange="updateConsent('MARKETING', this.checked)">
+                   data-action="update-consent" data-consent-type="MARKETING">
         </label>
         <label class="sf-switch-row">
             <span>결제·정산 알림 (선택)</span>
             <input type="checkbox" class="form-check-input" id="notificationAgreed"
-                   onchange="updateConsent('NOTIFICATION', this.checked)">
+                   data-action="update-consent" data-consent-type="NOTIFICATION">
         </label>
         <p class="sf-field-hint">동의를 거부해도 서비스 이용에는 제한이 없습니다.</p>
     </section>
@@ -56,13 +59,14 @@
         <p class="sf-field-hint">탈퇴하면 구독·결제·공유·동의 데이터가 즉시 파기됩니다.</p>
         <div class="sf-delete-row">
             <input type="text" class="form-control" id="deleteConfirmation" placeholder='확인을 위해 "탈퇴"를 입력하세요'>
-            <button type="button" class="sf-btn sf-btn-danger" onclick="deleteAccount()">탈퇴</button>
+            <button type="button" class="sf-btn sf-btn-danger" data-action="delete-account">탈퇴</button>
         </div>
     </section>
 
     <div class="sf-error d-none" id="settingsError" role="alert"></div>
 </main>
 
+<script src="/js/http.js?v=20261125r"></script>
 <script src="/js/settings.js?v=20261125r"></script>
 </body>
 </html>

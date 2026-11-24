@@ -12,20 +12,12 @@ import org.springframework.stereotype.Service;
 public class CustomOidcUserService extends OidcUserService {
 
     private final UserService userService;
+    private final OAuthUserInfoMapper userInfoMapper;
 
     @Override
     public OidcUser loadUser(OidcUserRequest userRequest) {
         OidcUser oidcUser = super.loadUser(userRequest);
-        userService.findOrCreate(new OAuthUserInfo(
-                attribute(oidcUser, "sub"),
-                attribute(oidcUser, "email"),
-                attribute(oidcUser, "name"),
-                attribute(oidcUser, "picture")));
+        userService.findOrCreate(userInfoMapper.from(oidcUser.getAttributes()));
         return oidcUser;
-    }
-
-    private String attribute(OidcUser oidcUser, String name) {
-        Object value = oidcUser.getAttribute(name);
-        return value == null ? null : value.toString();
     }
 }

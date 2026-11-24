@@ -4,14 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="color-scheme" content="dark">
+    <meta name="_csrf" content="{{_csrf.token}}">
+    <meta name="_csrf_header" content="{{_csrf.headerName}}">
     <title>SubFlow - 구독 관리</title>
 
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="/vendor/pretendard/pretendardvariable.css">
+    <link href="/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/vendor/bootstrap-icons/bootstrap-icons.min.css">
     <link rel="stylesheet" href="/css/app.css?v=20261125r">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="/vendor/chartjs/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -35,16 +36,16 @@
         <nav class="sf-tabs" id="viewTabs" role="tablist" aria-label="화면 전환">
             <button class="sf-tab active" id="tab-cal-btn" type="button" role="tab"
                     data-bs-toggle="pill" data-bs-target="#tab-calendar" aria-controls="tab-calendar"
-                    aria-selected="true" onclick="loadCalendar()">캘린더</button>
+                    aria-selected="true" data-action="load-calendar">캘린더</button>
             <button class="sf-tab" id="tab-list-btn" type="button" role="tab"
                     data-bs-toggle="pill" data-bs-target="#tab-list" aria-controls="tab-list"
                     aria-selected="false">구독</button>
             <button class="sf-tab" id="tab-charts-btn" type="button" role="tab"
                     data-bs-toggle="pill" data-bs-target="#tab-charts" aria-controls="tab-charts"
-                    aria-selected="false" onclick="renderCharts()">분석</button>
+                    aria-selected="false" data-action="render-charts">분석</button>
             <button class="sf-tab" id="tab-shares-btn" type="button" role="tab"
                     data-bs-toggle="pill" data-bs-target="#tab-shares" aria-controls="tab-shares"
-                    aria-selected="false" onclick="loadShared()">공유</button>
+                    aria-selected="false" data-action="load-shares">공유</button>
         </nav>
 
         <div class="sf-top-actions">
@@ -90,11 +91,11 @@
                     <div class="sf-cal-head">
                         <h2 class="sf-cal-title" id="calCurrentTitle">2026년 11월</h2>
                         <div class="sf-cal-nav">
-                            <button type="button" onclick="changeMonth(-1)" aria-label="이전 달">
+                            <button type="button" data-action="change-month" data-delta="-1" aria-label="이전 달">
                                 <i class="bi bi-chevron-left"></i>
                             </button>
-                            <button type="button" onclick="goToCurrentMonth()">오늘</button>
-                            <button type="button" onclick="changeMonth(1)" aria-label="다음 달">
+                            <button type="button" data-action="current-month">오늘</button>
+                            <button type="button" data-action="change-month" data-delta="1" aria-label="다음 달">
                                 <i class="bi bi-chevron-right"></i>
                             </button>
                         </div>
@@ -160,19 +161,19 @@
                                 <ul class="dropdown-menu dropdown-menu-end sf-dropdown">
                                     <li>
                                         <button type="button" class="dropdown-item" data-id="{{id}}"
-                                                data-name="{{serviceName}}" onclick="openShareModal(this)">함께 쓰기</button>
+                                                data-name="{{serviceName}}" data-action="open-share">함께 쓰기</button>
                                     </li>
                                     <li>
                                         <button type="button" class="dropdown-item" data-name="{{serviceName}}"
-                                                onclick="openCancelGuide(this)">해지 방법</button>
+                                                data-action="open-cancel-guide">해지 방법</button>
                                     </li>
                                     <li>
                                         <button type="button" class="dropdown-item" data-id="{{id}}"
-                                                data-name="{{serviceName}}" onclick="cancelModal(this)">해지</button>
+                                                data-name="{{serviceName}}" data-action="cancel-subscription">해지</button>
                                     </li>
                                     <li>
                                         <button type="button" class="dropdown-item text-danger" data-id="{{id}}"
-                                                onclick="deleteSubscription(this)">삭제</button>
+                                                data-action="delete-subscription">삭제</button>
                                     </li>
                                 </ul>
                             </div>
@@ -244,9 +245,9 @@
                 <div class="sf-demo-head">
                     <span>배치 도구</span>
                     <div class="sf-demo-buttons">
-                        <button type="button" class="sf-demo-btn" onclick="triggerBatch('run-billing-batch')">결제 갱신</button>
-                        <button type="button" class="sf-demo-btn" onclick="triggerBatch('run-notification-batch')">알림 발송</button>
-                        <button type="button" class="sf-demo-btn" onclick="triggerBatch('run-expiration-batch')">만료 처리</button>
+                        <button type="button" class="sf-demo-btn" data-action="run-batch" data-batch="run-billing-batch">결제 갱신</button>
+                        <button type="button" class="sf-demo-btn" data-action="run-batch" data-batch="run-notification-batch">알림 발송</button>
+                        <button type="button" class="sf-demo-btn" data-action="run-batch" data-batch="run-expiration-batch">만료 처리</button>
                     </div>
                 </div>
                 <div id="logsContainer" class="sf-log-list">
@@ -293,7 +294,7 @@
                             <i class="bi bi-search" aria-hidden="true"></i>
                             <input type="search" id="serviceSearch" placeholder="서비스 검색" aria-label="서비스 검색" autocomplete="off">
                         </div>
-                        <button type="button" class="sf-direct-link" onclick="selectDirectEntry()">
+                        <button type="button" class="sf-direct-link" data-action="select-direct">
                             <i class="bi bi-plus-lg"></i> 직접 입력
                         </button>
                     </div>
@@ -302,7 +303,7 @@
                 </div>
 
                 <div id="stepDetails" class="d-none">
-                    <button type="button" class="sf-back-btn" onclick="showServiceStep()">
+                    <button type="button" class="sf-back-btn" data-action="show-service-step">
                         <i class="bi bi-arrow-left"></i> 서비스 다시 선택
                     </button>
                     <div class="sf-selected-service" id="selectedService"></div>
@@ -329,7 +330,7 @@
                             </div>
                             <div class="col-6">
                                 <label class="form-label" for="billingCycle">결제 주기 <span class="text-danger">*</span></label>
-                                <select class="form-select" id="billingCycle" onchange="updatePreview()">
+                                <select class="form-select" id="billingCycle">
                                     <option value="MONTHLY">매월 결제</option>
                                     <option value="YEARLY">매년 결제</option>
                                     <option value="WEEKLY">매주 결제</option>
@@ -340,18 +341,18 @@
                         <div class="row g-3 mb-3">
                             <div class="col-6">
                                 <label class="form-label" for="fee">결제 금액 (원) <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="fee" placeholder="17000" min="0" oninput="updatePreview()" required>
+                                <input type="number" class="form-control" id="fee" placeholder="17000" min="0" required>
                             </div>
                             <div class="col-6" id="billingDayContainer">
                                 <label class="form-label" for="billingDay">매월 결제일</label>
-                                <input type="number" class="form-control" id="billingDay" placeholder="25" min="1" max="31" oninput="updatePreview()">
+                                <input type="number" class="form-control" id="billingDay" placeholder="25" min="1" max="31">
                             </div>
                         </div>
 
                         <div class="row g-3 mb-3">
                             <div class="col-6">
                                 <label class="form-label" for="startDate">구독 시작일</label>
-                                <input type="date" class="form-control" id="startDate" onchange="updatePreview()">
+                                <input type="date" class="form-control" id="startDate">
                             </div>
                             <div class="col-6">
                                 <label class="form-label" for="remindDaysBefore">결제 예정 알림</label>
@@ -388,7 +389,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                <button type="button" class="btn btn-primary d-none" id="createSubmitBtn" onclick="submitSubscription()">
+                <button type="button" class="btn btn-primary d-none" id="createSubmitBtn" data-action="submit-subscription">
                     <i class="bi bi-check-lg me-1"></i>구독 등록
                 </button>
             </div>
@@ -411,7 +412,7 @@
                 <div class="sf-radio-stack mb-3">
                     <label class="sf-radio-card" for="cancelModeImmediate">
                         <input class="form-check-input" type="radio" name="cancelMode" id="cancelModeImmediate"
-                               value="immediate" checked onchange="syncCancelMode()">
+                               value="immediate" checked>
                         <span>
                             <strong>즉시 해지</strong>
                             <small>지금 바로 구독을 종료합니다.</small>
@@ -419,7 +420,7 @@
                     </label>
                     <label class="sf-radio-card" for="cancelModeScheduled">
                         <input class="form-check-input" type="radio" name="cancelMode" id="cancelModeScheduled"
-                               value="scheduled" onchange="syncCancelMode()">
+                               value="scheduled">
                         <span>
                             <strong>해지 예약</strong>
                             <small>선택한 날짜에 자동으로 해지됩니다.</small>
@@ -436,7 +437,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">취소</button>
-                <button type="button" class="btn btn-warning" id="cancelSubmitBtn" onclick="submitCancel()">해지하기</button>
+                <button type="button" class="btn btn-warning" id="cancelSubmitBtn" data-action="submit-cancel">해지하기</button>
             </div>
         </div>
     </div>
@@ -452,14 +453,13 @@
             <div class="modal-body">
                 <div id="importStep1">
                     <div class="sf-import-drop" id="importDropZone" role="button" tabindex="0"
-                         onclick="document.getElementById('importFileInput').click()">
+                         data-action="pick-import-file">
                         <i class="bi bi-filetype-csv"></i>
                         <strong>CSV 파일을 선택하거나 여기로 끌어다 놓으세요</strong>
                         <small>카드/은행 앱에서 내려받은 내역 파일 · 최대 5MB, 5,000건</small>
                         <span id="importFileName" class="sf-import-filename d-none"></span>
                     </div>
-                    <input type="file" id="importFileInput" accept=".csv,text/csv" class="d-none"
-                           onchange="selectImportFile(this)">
+                    <input type="file" id="importFileInput" accept=".csv,text/csv" class="d-none">
                 </div>
 
                 <div id="importStep2" class="d-none">
@@ -479,7 +479,7 @@
                                 <select class="form-select form-select-sm" id="mapAmount"></select>
                             </div>
                         </div>
-                        <button type="button" class="sf-btn sf-btn-primary mt-3" onclick="previewImport(true)">다시 분석</button>
+                        <button type="button" class="sf-btn sf-btn-primary mt-3" data-action="preview-import-manual">다시 분석</button>
                     </div>
 
                     <div id="importPreviewBody">
@@ -489,7 +489,7 @@
                                 <thead>
                                 <tr>
                                     <th><input type="checkbox" class="form-check-input" id="importSelectAll"
-                                               onchange="toggleAllImportRows(this.checked)" aria-label="전체 선택"></th>
+                                               aria-label="전체 선택"></th>
                                     <th>날짜</th>
                                     <th>가맹점</th>
                                     <th class="text-end">금액</th>
@@ -517,8 +517,8 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
-                <button type="button" class="sf-btn sf-btn-primary" id="importPreviewBtn" onclick="previewImport(false)" disabled>다음</button>
-                <button type="button" class="sf-btn sf-btn-primary d-none" id="importConfirmBtn" onclick="confirmImport()">적용</button>
+                <button type="button" class="sf-btn sf-btn-primary" id="importPreviewBtn" data-action="preview-import" disabled>다음</button>
+                <button type="button" class="sf-btn sf-btn-primary d-none" id="importConfirmBtn" data-action="confirm-import">적용</button>
             </div>
         </div>
     </div>
@@ -551,7 +551,7 @@
                     <div class="sf-empty-line">불러오는 중…</div>
                 </div>
 
-                <form class="sf-share-form" onsubmit="addShare(event)">
+                <form id="shareForm" class="sf-share-form">
                     <input type="text" class="form-control" id="shareMemberName" placeholder="멤버 이름" maxlength="50">
                     <input type="number" class="form-control" id="shareAmount" placeholder="분담 금액" min="1">
                     <input type="email" class="form-control" id="shareMemberEmail" placeholder="이메일 (선택)">
@@ -585,7 +585,8 @@
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/js/http.js?v=20261125r"></script>
+<script src="/vendor/bootstrap/bootstrap.bundle.min.js"></script>
 <script src="/js/app.js?v=20261125r" defer></script>
 </body>
 </html>

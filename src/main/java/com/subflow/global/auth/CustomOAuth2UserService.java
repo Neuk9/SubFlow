@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final com.subflow.user.service.UserService userService;
+    private final OAuthUserInfoMapper userInfoMapper;
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) {
@@ -20,15 +21,6 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     }
 
     OAuthUserInfo toInfo(OAuth2User oAuth2User) {
-        return new OAuthUserInfo(
-                attribute(oAuth2User, "sub"),
-                attribute(oAuth2User, "email"),
-                attribute(oAuth2User, "name"),
-                attribute(oAuth2User, "picture"));
-    }
-
-    private String attribute(OAuth2User oAuth2User, String name) {
-        Object value = oAuth2User.getAttribute(name);
-        return value == null ? null : value.toString();
+        return userInfoMapper.from(oAuth2User.getAttributes());
     }
 }

@@ -18,6 +18,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "subscription_shares")
@@ -46,21 +47,62 @@ public class SubscriptionShare extends BaseTimeEntity {
     @Column(nullable = false, length = 20)
     private ShareStatus status;
 
+    @Column(name = "invited_at")
+    private LocalDateTime invitedAt;
+
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
+    @Column(name = "responded_at")
+    private LocalDateTime respondedAt;
+
     @Builder
     public SubscriptionShare(Subscription subscription, String memberName, BigDecimal shareAmount,
-                             String memberEmail, ShareStatus status) {
+                             String memberEmail, ShareStatus status, LocalDateTime invitedAt,
+                             LocalDateTime expiresAt, LocalDateTime respondedAt) {
         this.subscription = subscription;
         this.memberName = memberName;
         this.shareAmount = shareAmount;
         this.memberEmail = memberEmail;
         this.status = status != null ? status : ShareStatus.ACTIVE;
+        this.invitedAt = invitedAt;
+        this.expiresAt = expiresAt;
+        this.respondedAt = respondedAt;
     }
 
-    public void accept() {
+    public boolean isExpired(LocalDateTime now) {
+        return status == ShareStatus.PENDING
+                && expiresAt != null
+                && expiresAt.isBefore(now);
+    }
+
+    public void accept(LocalDateTime now) {
         this.status = ShareStatus.ACTIVE;
+        this.respondedAt = now;
     }
 
-    public void decline() {
+    public void decline(LocalDateTime now) {
         this.status = ShareStatus.DECLINED;
+        this.respondedAt = now;
+    }
+
+    public void reinvite(LocalDateTime now) {
+        this.status = ShareStatus.PENDING;
+        this.invitedAt = now;
+        this.expiresAt = now.plusDays(7);
+        this.respondedAt = null;
+    }
+
+    public void expire() {
+        this.status = ShareStatus.EXPIRED;
+    }
+
+    public void backfillPendingInvitation(LocalDateTime createdAt) {
+        this.invitedAt = createdAt;
+        this.expiresAt = createdAt.plusDays(7);
+    }
+
+    public void backfillActiveInvitation(LocalDateTime createdAt) {
+        this.invitedAt = createdAt;
     }
 }

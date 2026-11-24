@@ -1,8 +1,25 @@
+server:
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      protocol-header: X-Forwarded-Proto
+      remote-ip-header: CF-Connecting-IP
+      # 클라이언트 위조 가능한 X-Forwarded-Host / X-Forwarded-Port 는 신뢰하지 않는다.
+      host-header: ""
+      port-header: ""
+  servlet:
+    session:
+      cookie:
+        secure: true
+
 spring:
+  servlet:
+    multipart:
+      location: /uploads
   datasource:
     url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:subflow}
     username: ${DB_USERNAME:subflow}
-    password: ${DB_PASSWORD:subflow}
+    password: ${DB_PASSWORD}
   h2:
     console:
       enabled: false
@@ -12,7 +29,14 @@ spring:
 
 subflow:
   auth:
-    enabled: true
+    mode: oauth
+  security:
+    allowed-origins:
+      - https://subflow.stda.app
+    trust-cloudflare-headers: true
+    audit-hash-pepper: ${AUDIT_HASH_PEPPER}
+    rate-limit:
+      enabled: true
 
 logging:
   level:

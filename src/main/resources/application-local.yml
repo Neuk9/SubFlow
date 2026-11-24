@@ -1,3 +1,9 @@
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+
 spring:
   datasource:
     url: jdbc:h2:mem:subflow-local;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;MODE=PostgreSQL
@@ -13,7 +19,16 @@ spring:
 
 subflow:
   auth:
-    enabled: false
+    mode: demo
+  security:
+    allowed-origins:
+      - http://localhost:8080
+      - http://localhost:19007
+      - http://127.0.0.1:19007
+    trust-cloudflare-headers: false
+    audit-hash-pepper: demo-pepper
+    rate-limit:
+      enabled: false
 
 logging:
   level:

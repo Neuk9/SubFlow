@@ -1,5 +1,8 @@
 package com.subflow.user.controller;
 
+import com.subflow.global.audit.AuditEventType;
+import com.subflow.global.audit.AuditOutcome;
+import com.subflow.global.audit.AuditService;
 import com.subflow.global.auth.CurrentUserProvider;
 import com.subflow.user.dto.AccountDeleteRequest;
 import com.subflow.user.dto.ConsentUpdateRequest;
@@ -35,6 +38,7 @@ public class UserController {
     private final AccountDeletionService accountDeletionService;
     private final DataExportService dataExportService;
     private final CurrentUserProvider currentUserProvider;
+    private final AuditService auditService;
 
     @GetMapping
     public ProfileResponse getProfile() {
@@ -58,7 +62,10 @@ public class UserController {
 
     @GetMapping("/data")
     public ResponseEntity<DataExportResponse> exportData() {
-        DataExportResponse data = dataExportService.export(currentUserProvider.getCurrentUserEmail());
+        String email = currentUserProvider.getCurrentUserEmail();
+        DataExportResponse data = dataExportService.export(email);
+        auditService.record(AuditEventType.DATA_EXPORTED, AuditOutcome.SUCCESS,
+                email, "user", null, "json");
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"subflow-data.json\"")
                 .body(data);

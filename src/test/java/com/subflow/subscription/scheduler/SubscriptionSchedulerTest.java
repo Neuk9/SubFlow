@@ -10,6 +10,7 @@ import com.subflow.subscription.domain.SubscriptionStatus;
 import com.subflow.subscription.repository.BillingRecordRepository;
 import com.subflow.subscription.repository.NotificationHistoryRepository;
 import com.subflow.subscription.repository.SubscriptionRepository;
+import com.subflow.subscription.service.SubscriptionShareService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -45,6 +46,9 @@ class SubscriptionSchedulerTest {
 
     @Mock
     private BillingDateCalculator billingDateCalculator;
+
+    @Mock
+    private SubscriptionShareService shareService;
 
     @Spy
     private Clock clock = Clock.systemDefaultZone();
@@ -225,5 +229,16 @@ class SubscriptionSchedulerTest {
 
         assertThat(count).isZero();
         verify(notificationHistoryRepository, never()).save(any(NotificationHistory.class));
+    }
+
+    @Test
+    @DisplayName("만료 배치는 공유 서비스의 초대 만료 처리를 호출한다")
+    void expireInvitationsDelegatesToShareService() {
+        given(shareService.expireInvitations()).willReturn(2);
+
+        int expired = subscriptionScheduler.expireInvitations();
+
+        assertThat(expired).isEqualTo(2);
+        verify(shareService).expireInvitations();
     }
 }

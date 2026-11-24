@@ -1,5 +1,8 @@
 package com.subflow.subscription.importer.parser;
 
+import com.subflow.global.exception.BusinessException;
+import com.subflow.global.exception.ErrorCode;
+import com.subflow.subscription.importer.validation.CsvLimits;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -22,6 +25,10 @@ public class CsvParser {
     private static final char[] CANDIDATE_DELIMITERS = {',', ';', '\t'};
 
     public CsvDocument parse(byte[] content) {
+        return parse(content, CsvLimits.DEFAULT);
+    }
+
+    public CsvDocument parse(byte[] content, CsvLimits limits) {
         Charset charset = CsvEncodingDetector.detect(content);
         String text = stripBom(new String(content, charset));
         char delimiter = detectDelimiter(text);
@@ -31,14 +38,31 @@ public class CsvParser {
             CSVFormat format = CSVFormat.DEFAULT.builder()
                     .setDelimiter(delimiter)
                     .build();
+            // 헤더 1개가 포함될 수 있으므로 전체 레코드 상한은 maxRows + 1이다.
+            int maxRecords = limits.maxRows() + 1;
+            int recordCount = 0;
             try (CSVParser csvParser = CSVParser.parse(new StringReader(text), format)) {
                 for (CSVRecord record : csvParser) {
-                    List<String> values = new ArrayList<>();
-                    record.forEach(values::add);
+                    recordCount++;
+                    if (recordCount > maxRecords) {
+                        throw new BusinessException(ErrorCode.IMPORT_LIMIT_EXCEEDED);
+                    }
+                    if (record.size() > limits.maxColumns()) {
+                        throw new BusinessException(ErrorCode.UNSUPPORTED_CSV);
+                    }
+                    List<String> values = new ArrayList<>(record.size());
+                    for (String value : record) {
+                        if (value.length() > limits.maxCellLength()) {
+                            throw new BusinessException(ErrorCode.UNSUPPORTED_CSV);
+                        }
+                        values.add(value);
+                    }
                     rows.add(new CsvRow((int) record.getRecordNumber(), values));
                 }
-            } catch (IOException e) {
-                throw new UncheckedIOException("CSV 파싱에 실패했습니다.", e);
+            } catch (BusinessException e) {
+                throw e;
+            } catch (IOException | IllegalStateException | UncheckedIOException e) {
+                throw new BusinessException(ErrorCode.UNSUPPORTED_CSV);
             }
         }
         return new CsvDocument(charset.name(), delimiter, rows);

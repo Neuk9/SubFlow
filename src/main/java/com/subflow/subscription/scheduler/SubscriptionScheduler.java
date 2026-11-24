@@ -10,6 +10,7 @@ import com.subflow.subscription.domain.SubscriptionStatus;
 import com.subflow.subscription.repository.BillingRecordRepository;
 import com.subflow.subscription.repository.NotificationHistoryRepository;
 import com.subflow.subscription.repository.SubscriptionRepository;
+import com.subflow.subscription.service.SubscriptionShareService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -30,6 +31,7 @@ public class SubscriptionScheduler {
     private final BillingRecordRepository billingRecordRepository;
     private final NotificationHistoryRepository notificationHistoryRepository;
     private final BillingDateCalculator billingDateCalculator;
+    private final SubscriptionShareService shareService;
     private final Clock clock;
 
     /**
@@ -175,5 +177,17 @@ public class SubscriptionScheduler {
         }
 
         return count;
+    }
+
+    /**
+     * [배치 4] 공유 초대 만료 처리 (매일 04:10)
+     * 만료일이 지난 초대 대기(PENDING) 공유를 만료(EXPIRED) 상태로 전이합니다.
+     */
+    @Scheduled(cron = "0 10 4 * * *", zone = "${subflow.scheduler.zone:Asia/Seoul}")
+    @Transactional
+    public int expireInvitations() {
+        int expired = shareService.expireInvitations();
+        log.info("[배치] 만료된 공유 초대 처리 (총 {}건)", expired);
+        return expired;
     }
 }

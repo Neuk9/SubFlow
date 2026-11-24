@@ -30,7 +30,6 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -101,6 +100,17 @@ class CsvImportServicePreviewTest {
         MockMultipartFile file = csvWithRows(5001);
 
         assertThatThrownBy(() -> service.preview(file, null, null, null, true))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.IMPORT_LIMIT_EXCEEDED);
+    }
+
+    @Test
+    @DisplayName("헤더 없는 정확히 5,001행이면 서비스 검사에서 IMPORT_LIMIT_EXCEEDED를 던진다")
+    void rejectsTooManyRowsWithoutHeader() {
+        MockMultipartFile file = headerlessCsvWithRows(5001);
+
+        assertThatThrownBy(() -> service.preview(file, null, null, null, false))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.IMPORT_LIMIT_EXCEEDED);
@@ -238,13 +248,19 @@ class CsvImportServicePreviewTest {
     }
 
     private MockMultipartFile csvWithRows(int count) {
-        StringBuilder builder = new StringBuilder("거래일,이용처,승인금액\n");
-        List<String> lines = new ArrayList<>();
+        return csv("거래일,이용처,승인금액\n" + dataLines(count));
+    }
+
+    private MockMultipartFile headerlessCsvWithRows(int count) {
+        return csv(dataLines(count));
+    }
+
+    private String dataLines(int count) {
+        StringBuilder builder = new StringBuilder();
         for (int i = 0; i < count; i++) {
-            lines.add("2026-01-01,STORE %05d,1000".formatted(i));
+            builder.append("2026-01-01,STORE %05d,1000\n".formatted(i));
         }
-        builder.append(String.join("\n", lines)).append('\n');
-        return csv(builder.toString());
+        return builder.toString();
     }
 
     private Subscription subscription(Long id, String serviceName, String fee, int billingDay) {

@@ -1,5 +1,8 @@
 package com.subflow.subscription.service;
 
+import com.subflow.global.audit.AuditEventType;
+import com.subflow.global.audit.AuditOutcome;
+import com.subflow.global.audit.AuditService;
 import com.subflow.global.exception.BusinessException;
 import com.subflow.global.exception.ErrorCode;
 import com.subflow.subscription.domain.SettlementRecord;
@@ -22,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
@@ -37,9 +41,12 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class SubscriptionShareService {
 
+    private static final int INVITATION_VALID_DAYS = 7;
+
     private final SubscriptionShareRepository shareRepository;
     private final SettlementRecordRepository settlementRepository;
     private final SubscriptionFinder subscriptionFinder;
+    private final AuditService auditService;
     private final Clock clock;
 
     public List<ShareResponse> getShares(Long subscriptionId, String period) {
@@ -69,13 +76,19 @@ public class SubscriptionShareService {
                 && shareRepository.existsBySubscriptionIdAndMemberEmailIgnoreCase(subscriptionId, memberEmail)) {
             throw new BusinessException(ErrorCode.DUPLICATE_SHARE_MEMBER);
         }
+        LocalDateTime now = LocalDateTime.now(clock);
         SubscriptionShare saved = shareRepository.save(SubscriptionShare.builder()
                 .subscription(subscription)
                 .memberName(memberName)
                 .shareAmount(request.shareAmount())
                 .memberEmail(memberEmail)
                 .status(memberEmail == null ? ShareStatus.ACTIVE : ShareStatus.PENDING)
+                .invitedAt(memberEmail == null ? null : now)
+                .expiresAt(memberEmail == null ? null : now.plusDays(INVITATION_VALID_DAYS))
                 .build());
+        auditService.record(AuditEventType.SHARE_INVITED, AuditOutcome.SUCCESS,
+                subscription.getOwnerEmail(), "share", saved.getId(),
+                memberEmail == null ? "direct" : "invite");
         return toResponse(saved, null);
     }
 
@@ -85,19 +98,59 @@ public class SubscriptionShareService {
         if (share.getSubscription().getStatus() == SubscriptionStatus.CANCELED) {
             throw new BusinessException(ErrorCode.ALREADY_CANCELED);
         }
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (share.getStatus() == ShareStatus.EXPIRED || share.isExpired(now)) {
+            throw new BusinessException(ErrorCode.INVITATION_EXPIRED);
+        }
         if (share.getStatus() != ShareStatus.PENDING) {
             throw new BusinessException(ErrorCode.INVALID_SHARE_STATUS);
         }
-        share.accept();
+        share.accept(now);
+        auditService.record(AuditEventType.SHARE_ACCEPTED, AuditOutcome.SUCCESS,
+                share.getMemberEmail(), "share", share.getId(), null);
     }
 
     @Transactional
     public void declineInvitation(Long shareId) {
         SubscriptionShare share = findMemberShare(shareId);
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (share.getStatus() == ShareStatus.EXPIRED || share.isExpired(now)) {
+            throw new BusinessException(ErrorCode.INVITATION_EXPIRED);
+        }
         if (share.getStatus() != ShareStatus.PENDING) {
             throw new BusinessException(ErrorCode.INVALID_SHARE_STATUS);
         }
-        share.decline();
+        share.decline(now);
+        auditService.record(AuditEventType.SHARE_DECLINED, AuditOutcome.SUCCESS,
+                share.getMemberEmail(), "share", share.getId(), null);
+    }
+
+    @Transactional
+    public void reinvite(Long shareId) {
+        SubscriptionShare share = findOwnedShare(shareId);
+        if (share.getSubscription().getStatus() == SubscriptionStatus.CANCELED) {
+            throw new BusinessException(ErrorCode.ALREADY_CANCELED);
+        }
+        LocalDateTime now = LocalDateTime.now(clock);
+        boolean reinvitable = share.getStatus() == ShareStatus.DECLINED
+                || share.getStatus() == ShareStatus.EXPIRED
+                || share.isExpired(now);
+        if (!reinvitable) {
+            throw new BusinessException(ErrorCode.INVALID_SHARE_STATUS);
+        }
+        share.reinvite(now);
+        auditService.record(AuditEventType.SHARE_INVITED, AuditOutcome.SUCCESS,
+                share.getSubscription().getOwnerEmail(), "share", share.getId(), "reinvite");
+    }
+
+    @Transactional
+    public int expireInvitations() {
+        LocalDateTime now = LocalDateTime.now(clock);
+        List<SubscriptionShare> expired = shareRepository
+                .findAllByStatusAndExpiresAtBefore(ShareStatus.PENDING, now);
+        expired.forEach(SubscriptionShare::expire);
+        shareRepository.saveAll(expired);
+        return expired.size();
     }
 
     @Transactional
@@ -124,6 +177,8 @@ public class SubscriptionShareService {
             record.cancelPaid();
         }
         settlementRepository.save(record);
+        auditService.record(AuditEventType.PAYMENT_MARKED, AuditOutcome.SUCCESS,
+                share.getMemberEmail(), "share", shareId, request.period());
     }
 
     public List<MemberShareResponse> getSharedWithMe(String period) {
@@ -132,10 +187,13 @@ public class SubscriptionShareService {
 
     public List<MemberShareResponse> getSharedWithMe(String email, String period) {
         String resolvedPeriod = resolvePeriod(period);
+        LocalDateTime now = LocalDateTime.now(clock);
         List<SubscriptionShare> shares = shareRepository
                 .findAllByMemberEmailIgnoreCaseOrderByIdAsc(email).stream()
-                .filter(share -> share.getStatus() == ShareStatus.PENDING
-                        || share.getStatus() == ShareStatus.ACTIVE)
+                .filter(share -> {
+                    ShareStatus status = effectiveStatus(share, now);
+                    return status == ShareStatus.PENDING || status == ShareStatus.ACTIVE;
+                })
                 .filter(share -> share.getSubscription().getStatus() != SubscriptionStatus.CANCELED)
                 .toList();
         Map<Long, SettlementRecord> records = recordsByShareId(shares, resolvedPeriod);
@@ -145,17 +203,20 @@ public class SubscriptionShareService {
                         share.getSubscription().getId(),
                         share.getSubscription().getServiceName(),
                         share.getShareAmount(),
-                        share.getStatus(),
+                        effectiveStatus(share, now),
                         isMemberPaid(records.get(share.getId())),
                         memberPaidAt(records.get(share.getId())),
                         isSettled(records.get(share.getId())),
-                        share.getSubscription().getNextBillingDate()))
+                        share.getSubscription().getNextBillingDate(),
+                        share.getExpiresAt()))
                 .toList();
     }
 
     @Transactional
     public void removeShare(Long shareId) {
         SubscriptionShare share = findOwnedShare(shareId);
+        auditService.record(AuditEventType.SHARE_REMOVED, AuditOutcome.SUCCESS,
+                share.getSubscription().getOwnerEmail(), "share", shareId, "remove");
         settlementRepository.deleteAllByShareId(shareId);
         shareRepository.delete(share);
     }
@@ -181,6 +242,8 @@ public class SubscriptionShareService {
             record.unsettle();
         }
         settlementRepository.save(record);
+        auditService.record(AuditEventType.SETTLEMENT_UPDATED, AuditOutcome.SUCCESS,
+                share.getSubscription().getOwnerEmail(), "share", shareId, request.period());
     }
 
     public ShareSummaryResponse getSummary(String period) {
@@ -265,9 +328,14 @@ public class SubscriptionShareService {
                 isSettled(record),
                 record == null ? null : record.getSettledAt(),
                 share.getMemberEmail(),
-                share.getStatus(),
+                effectiveStatus(share, LocalDateTime.now(clock)),
                 isMemberPaid(record),
-                memberPaidAt(record));
+                memberPaidAt(record),
+                share.getExpiresAt());
+    }
+
+    private ShareStatus effectiveStatus(SubscriptionShare share, LocalDateTime now) {
+        return share.isExpired(now) ? ShareStatus.EXPIRED : share.getStatus();
     }
 
     private String resolvePeriod(String period) {
