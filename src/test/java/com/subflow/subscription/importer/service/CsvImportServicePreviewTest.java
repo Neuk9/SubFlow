@@ -107,6 +107,17 @@ class CsvImportServicePreviewTest {
     }
 
     @Test
+    @DisplayName("헤더가 없어도 데이터 5,001행이면 IMPORT_LIMIT_EXCEEDED를 던진다")
+    void rejectsTooManyRowsWithoutHeader() {
+        MockMultipartFile file = csvWithRows(5001);
+
+        assertThatThrownBy(() -> service.preview(file, null, null, null, false))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.IMPORT_LIMIT_EXCEEDED);
+    }
+
+    @Test
     @DisplayName("4,999건은 통과한다")
     void allowsJustUnderLimit() {
         givenOwner(List.of(), List.of());
