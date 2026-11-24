@@ -111,3 +111,10 @@ async function deleteAccount() {
 }
 
 loadProfile();
+
+document.querySelectorAll('[data-action="update-consent"]').forEach(input => {
+    input.addEventListener('change', event => {
+        updateConsent(event.target.dataset.consentType, event.target.checked);
+    });
+});
+document.querySelector('[data-action="delete-account"]').addEventListener('click', () => deleteAccount());

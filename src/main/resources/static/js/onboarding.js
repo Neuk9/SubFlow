@@ -155,3 +155,5 @@ async function submitOnboarding(event) {
 }
 
 loadProfile();
+
+document.getElementById('onboardingForm').addEventListener('submit', submitOnboarding);

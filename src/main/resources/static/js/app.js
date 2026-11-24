@@ -649,8 +649,8 @@ function renderInvitations(shares) {
                     <div class="sf-share-amount">내 분담 ${formatWon(share.shareAmount)} · 다음 결제 ${escapeHtml(share.nextBillingDate)}</div>
                 </div>
                 <div class="sf-share-actions">
-                    <button type="button" class="sf-btn sf-btn-primary sf-btn-sm" onclick="acceptInvitation(${share.shareId})">수락</button>
-                    <button type="button" class="sf-btn sf-btn-ghost sf-btn-sm" onclick="declineInvitation(${share.shareId})">거절</button>
+                    <button type="button" class="sf-btn sf-btn-primary sf-btn-sm" data-action="accept-invitation" data-share-id="${escapeHtml(share.shareId)}">수락</button>
+                    <button type="button" class="sf-btn sf-btn-ghost sf-btn-sm" data-action="decline-invitation" data-share-id="${escapeHtml(share.shareId)}">거절</button>
                 </div>
             </div>`).join('');
 }
@@ -664,7 +664,7 @@ function renderActiveShares(shares) {
             <div class="sf-share-row">
                 <input type="checkbox" class="form-check-input" ${share.memberPaid ? 'checked' : ''}
                        aria-label="${escapeHtml(share.serviceName)} 송금 완료"
-                       onchange="toggleMyPayment(${share.shareId}, this.checked)">
+                       data-action="toggle-payment" data-share-id="${escapeHtml(share.shareId)}">
                 <div class="sf-share-main">
                     <div class="sf-share-name">${escapeHtml(share.serviceName)}</div>
                     <div class="sf-share-amount">
@@ -931,7 +931,7 @@ function renderShares(shares) {
                        ${activeShare ? '' : 'disabled'}
                        aria-label="${escapeHtml(share.memberName)} 정산 확인"
                        title="정산 확인"
-                       onchange="toggleShareSettle(${share.id}, this.checked)">
+                       data-action="toggle-settlement" data-share-id="${escapeHtml(share.id)}">
                 <div class="sf-share-main">
                     <div class="sf-share-name">${escapeHtml(share.memberName)}
                         <span class="sf-share-status">${shareStatusLabel(share.status)}</span>
@@ -943,7 +943,7 @@ function renderShares(shares) {
                     </div>
                 </div>
                 <button type="button" class="sf-icon-btn" aria-label="${escapeHtml(share.memberName)} 삭제"
-                        onclick="removeShare(${share.id})"><i class="bi bi-x-lg"></i></button>
+                        data-action="remove-share" data-share-id="${escapeHtml(share.id)}"><i class="bi bi-x-lg"></i></button>
             </div>`;
         }).join('');
 }
@@ -1447,9 +1447,68 @@ document.getElementById('importModal').addEventListener('hidden.bs.modal', () =>
 setupImportDropZone();
 
 /* --------------------------------------------------------------------------
+   Event delegation
+   -------------------------------------------------------------------------- */
+
+const clickActions = {
+    'load-calendar': () => loadCalendar(),
+    'render-charts': () => renderCharts(),
+    'load-shares': () => loadShared(),
+    'change-month': element => changeMonth(Number(element.dataset.delta)),
+    'current-month': () => goToCurrentMonth(),
+    'open-share': element => openShareModal(element),
+    'open-cancel-guide': element => openCancelGuide(element),
+    'cancel-subscription': element => cancelModal(element),
+    'delete-subscription': element => deleteSubscription(element),
+    'run-batch': element => triggerBatch(element.dataset.batch),
+    'select-direct': () => selectDirectEntry(),
+    'show-service-step': () => showServiceStep(),
+    'submit-subscription': () => submitSubscription(),
+    'submit-cancel': () => submitCancel(),
+    'pick-import-file': () => document.getElementById('importFileInput').click(),
+    'preview-import-manual': () => previewImport(true),
+    'preview-import': () => previewImport(false),
+    'confirm-import': () => confirmImport(),
+    'accept-invitation': element => acceptInvitation(Number(element.dataset.shareId)),
+    'decline-invitation': element => declineInvitation(Number(element.dataset.shareId)),
+    'remove-share': element => removeShare(Number(element.dataset.shareId))
+};
+
+document.addEventListener('click', event => {
+    const element = event.target.closest('[data-action]');
+    if (!element) return;
+    const action = clickActions[element.dataset.action];
+    if (action) action(element);
+});
+
+document.addEventListener('change', event => {
+    const element = event.target.closest('[data-action]');
+    if (!element) return;
+    if (element.dataset.action === 'toggle-payment') {
+        toggleMyPayment(Number(element.dataset.shareId), element.checked);
+    } else if (element.dataset.action === 'toggle-settlement') {
+        toggleShareSettle(Number(element.dataset.shareId), element.checked);
+    }
+});
+
+/* --------------------------------------------------------------------------
    Init
    -------------------------------------------------------------------------- */
 
+document.getElementById('billingCycle').addEventListener('change', updatePreview);
+document.getElementById('fee').addEventListener('input', updatePreview);
+document.getElementById('billingDay').addEventListener('input', updatePreview);
+document.getElementById('startDate').addEventListener('change', updatePreview);
+document.querySelectorAll('input[name="cancelMode"]').forEach(radio => {
+    radio.addEventListener('change', syncCancelMode);
+});
+document.getElementById('importFileInput').addEventListener('change', event => {
+    selectImportFile(event.target);
+});
+document.getElementById('importSelectAll').addEventListener('change', event => {
+    toggleAllImportRows(event.target.checked);
+});
+document.getElementById('shareForm').addEventListener('submit', addShare);
 document.getElementById('serviceGrid').addEventListener('click', handleServiceGridClick);
 document.getElementById('serviceFilters').addEventListener('click', handleServiceFilterClick);
 document.getElementById('serviceSearch').addEventListener('input', event => {

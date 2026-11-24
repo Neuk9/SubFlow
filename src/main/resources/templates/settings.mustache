@@ -38,12 +38,12 @@
         <label class="sf-switch-row">
             <span>혜택·이벤트 알림 (선택)</span>
             <input type="checkbox" class="form-check-input" id="marketingAgreed"
-                   onchange="updateConsent('MARKETING', this.checked)">
+                   data-action="update-consent" data-consent-type="MARKETING">
         </label>
         <label class="sf-switch-row">
             <span>결제·정산 알림 (선택)</span>
             <input type="checkbox" class="form-check-input" id="notificationAgreed"
-                   onchange="updateConsent('NOTIFICATION', this.checked)">
+                   data-action="update-consent" data-consent-type="NOTIFICATION">
         </label>
         <p class="sf-field-hint">동의를 거부해도 서비스 이용에는 제한이 없습니다.</p>
     </section>
@@ -59,7 +59,7 @@
         <p class="sf-field-hint">탈퇴하면 구독·결제·공유·동의 데이터가 즉시 파기됩니다.</p>
         <div class="sf-delete-row">
             <input type="text" class="form-control" id="deleteConfirmation" placeholder='확인을 위해 "탈퇴"를 입력하세요'>
-            <button type="button" class="sf-btn sf-btn-danger" onclick="deleteAccount()">탈퇴</button>
+            <button type="button" class="sf-btn sf-btn-danger" data-action="delete-account">탈퇴</button>
         </div>
     </section>
 

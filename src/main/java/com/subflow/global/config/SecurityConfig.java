@@ -141,13 +141,13 @@ public class SecurityConfig {
     }
 
     /**
-     * jsDelivr 자체 호스팅 전까지 CDN과 인라인 핸들러를 임시로 허용한다.
-     * Task 12에서 {@code 'unsafe-inline'}을, Task 13에서 CDN을 제거해 최종 {@code 'self'} 정책으로 좁힌다.
+     * jsDelivr 자체 호스팅 전까지 CDN과 인라인 스타일을 임시로 허용한다.
+     * Task 12에서 스크립트의 {@code 'unsafe-inline'}을, Task 13에서 CDN을 제거해 최종 {@code 'self'} 정책으로 좁힌다.
      */
     private String contentSecurityPolicy(AuthMode mode) {
         String frameAncestors = mode == AuthMode.DEMO ? "'self'" : "'none'";
         return "default-src 'self'; "
-                + "script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
+                + "script-src 'self' https://cdn.jsdelivr.net; "
                 + "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'; "
                 + "font-src 'self' https://cdn.jsdelivr.net; "
                 + "img-src 'self' data:; "
