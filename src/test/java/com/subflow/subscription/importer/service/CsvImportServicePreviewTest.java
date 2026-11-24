@@ -181,6 +181,36 @@ class CsvImportServicePreviewTest {
     }
 
     @Test
+    @DisplayName("컬럼 매핑이 중복되면 INVALID_COLUMN_MAPPING을 던진다")
+    void rejectsDuplicateMapping() {
+        assertThatThrownBy(() -> service.preview(csv("a,b,c\n1,2,3\n"), 0, 0, 1, true))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_COLUMN_MAPPING);
+    }
+
+    @Test
+    @DisplayName("컬럼 매핑 인덱스가 범위를 벗어나면 INVALID_COLUMN_MAPPING을 던진다")
+    void rejectsOutOfRangeMapping() {
+        assertThatThrownBy(() -> service.preview(csv("a,b,c\n1,2,3\n"), 0, 1, 9, true))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_COLUMN_MAPPING);
+    }
+
+    @Test
+    @DisplayName("금액은 소수점 2자리로 정규화한다")
+    void normalizesAmountScale() {
+        givenOwner(List.of(), List.of());
+
+        ImportPreviewResponse response = service.preview(
+                csv("거래일,이용처,승인금액\n2026-01-01,STORE,10900.999\n"), null, null, null, true);
+
+        assertThat(response.rows()).hasSize(1);
+        assertThat(response.rows().get(0).amount()).isEqualByComparingTo("10901.00");
+    }
+
+    @Test
     @DisplayName("빈 파일은 EMPTY_IMPORT_FILE을 던진다")
     void rejectsEmptyFile() {
         assertThatThrownBy(() -> service.preview(csv(""), null, null, null, true))
