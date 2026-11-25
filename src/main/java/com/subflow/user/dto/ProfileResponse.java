@@ -18,11 +18,10 @@ public record ProfileResponse(
         Set<Category> interests,
         Set<Membership> memberships,
         boolean onboardingCompleted,
-        boolean marketingAgreed,
         boolean notificationAgreed
 ) {
 
-    public static ProfileResponse of(User user, boolean marketingAgreed, boolean notificationAgreed) {
+    public static ProfileResponse of(User user, boolean notificationAgreed) {
         return new ProfileResponse(
                 user.getId(),
                 user.getEmail(),
@@ -34,7 +33,6 @@ public record ProfileResponse(
                 user.interestSet(),
                 user.membershipSet(),
                 user.isOnboardingCompleted(),
-                marketingAgreed,
                 notificationAgreed);
     }
 }

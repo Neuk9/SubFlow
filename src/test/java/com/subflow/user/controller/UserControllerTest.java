@@ -100,8 +100,7 @@ class UserControllerTest {
                                   "interests": ["OTT"],
                                   "memberships": ["SKT"],
                                   "agreePrivacy": true,
-                                  "agreeTerms": true,
-                                  "agreeMarketing": false
+                                  "agreeTerms": true
                                 }
                                 """))
                 .andExpect(status().isOk())
@@ -139,7 +138,7 @@ class UserControllerTest {
 
         mockMvc.perform(put("/api/me/consents")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"type\":\"MARKETING\",\"agreed\":true}"))
+                        .content("{\"type\":\"NOTIFICATION\",\"agreed\":true}"))
                 .andExpect(status().isOk());
     }
 
@@ -148,7 +147,7 @@ class UserControllerTest {
     void rejectsMissingAgreedInConsentUpdate() throws Exception {
         mockMvc.perform(put("/api/me/consents")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"type\":\"MARKETING\"}"))
+                        .content("{\"type\":\"NOTIFICATION\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_INPUT_VALUE"));
 
@@ -206,6 +205,6 @@ class UserControllerTest {
     private ProfileResponse profile(boolean completed) {
         return new ProfileResponse(1L, EMAIL, "늑구", "pic",
                 2002, Occupation.UNIVERSITY, 2,
-                Set.of(Category.OTT), Set.of(Membership.SKT), completed, false, false);
+                Set.of(Category.OTT), Set.of(Membership.SKT), completed, false);
     }
 }

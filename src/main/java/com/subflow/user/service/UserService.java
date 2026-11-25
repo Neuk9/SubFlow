@@ -86,7 +86,6 @@ public class UserService {
         validateBirthYear(request.birthYear(), currentYear);
         boolean agreedPrivacy = Boolean.TRUE.equals(request.agreePrivacy());
         boolean agreedTerms = Boolean.TRUE.equals(request.agreeTerms());
-        boolean agreedMarketing = Boolean.TRUE.equals(request.agreeMarketing());
         if (!agreedPrivacy || !agreedTerms) {
             throw new BusinessException(ErrorCode.REQUIRED_CONSENT_MISSING);
         }
@@ -101,7 +100,6 @@ public class UserService {
         LocalDateTime now = LocalDateTime.now(clock);
         recordConsent(user, ConsentType.PRIVACY, ConsentVersions.PRIVACY, agreedPrivacy, now);
         recordConsent(user, ConsentType.TERMS, ConsentVersions.TERMS, agreedTerms, now);
-        recordConsent(user, ConsentType.MARKETING, ConsentVersions.MARKETING, agreedMarketing, now);
         auditService.record(AuditEventType.ONBOARDING_COMPLETED, AuditOutcome.SUCCESS,
                 email, "user", user.getId(), null);
         return toProfile(user);
@@ -114,17 +112,14 @@ public class UserService {
 
     @Transactional
     public ProfileResponse updateConsent(String email, com.subflow.user.dto.ConsentUpdateRequest request) {
-        if (request.type() != ConsentType.MARKETING && request.type() != ConsentType.NOTIFICATION) {
+        if (request.type() != ConsentType.NOTIFICATION) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
         if (request.agreed() == null) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
         User user = findUser(email);
-        String version = request.type() == ConsentType.MARKETING
-                ? ConsentVersions.MARKETING
-                : ConsentVersions.NOTIFICATION;
-        recordConsent(user, request.type(), version, request.agreed(), LocalDateTime.now(clock));
+        recordConsent(user, request.type(), ConsentVersions.NOTIFICATION, request.agreed(), LocalDateTime.now(clock));
         auditService.record(AuditEventType.CONSENT_CHANGED, AuditOutcome.SUCCESS,
                 email, "user", user.getId(), request.type().name());
         return toProfile(user);
@@ -133,7 +128,6 @@ public class UserService {
     private ProfileResponse toProfile(User user) {
         return ProfileResponse.of(
                 user,
-                isAgreed(user, ConsentType.MARKETING, ConsentVersions.MARKETING),
                 isAgreed(user, ConsentType.NOTIFICATION, ConsentVersions.NOTIFICATION));
     }
 

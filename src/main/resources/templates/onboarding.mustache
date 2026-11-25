@@ -14,7 +14,15 @@
 <main class="sf-auth-card sf-auth-card-wide">
     <div class="sf-settings-head">
         <h1 class="sf-auth-brand">SubFlow</h1>
-        <a class="sf-btn sf-btn-ghost sf-btn-sm d-none" id="onboardingBackLink" href="/settings">돌아가기</a>
+        <div class="sf-settings-actions">
+            {{#authEnabled}}
+            <form method="post" action="/logout">
+                <input type="hidden" name="_csrf" value="{{_csrf.token}}">
+                <button type="submit" class="sf-btn sf-btn-ghost sf-btn-sm">로그아웃</button>
+            </form>
+            {{/authEnabled}}
+            <a class="sf-btn sf-btn-ghost sf-btn-sm d-none" id="onboardingBackLink" href="/settings">돌아가기</a>
+        </div>
     </div>
     <p class="sf-auth-lead">맞춤 절약 혜택을 찾기 위해 몇 가지만 알려주세요.</p>
 
@@ -80,10 +88,6 @@
             <label class="sf-consent-row">
                 <input type="checkbox" id="agreeTerms" class="form-check-input" required>
                 <span>[필수] <a href="/terms" target="_blank">이용약관</a>에 동의합니다.</span>
-            </label>
-            <label class="sf-consent-row">
-                <input type="checkbox" id="agreeMarketing" class="form-check-input">
-                <span>[선택] 혜택·이벤트 알림 수신에 동의합니다.</span>
             </label>
         </section>
 

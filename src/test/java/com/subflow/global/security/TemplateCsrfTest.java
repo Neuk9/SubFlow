@@ -74,6 +74,15 @@ class TemplateCsrfTest {
         assertThat(template).contains("name=\"_csrf\" value=\"{{_csrf.token}}\"");
     }
 
+    @Test
+    @DisplayName("온보딩 페이지 로그아웃 폼은 CSRF hidden input을 포함한다")
+    void onboardingLogoutFormContainsCsrfInput() throws IOException {
+        String template = readTemplate("onboarding.mustache");
+
+        assertThat(template).contains("action=\"/logout\"");
+        assertThat(template).contains("name=\"_csrf\" value=\"{{_csrf.token}}\"");
+    }
+
     private String readTemplate(String name) throws IOException {
         return read("/templates/" + name);
     }

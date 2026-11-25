@@ -24,7 +24,6 @@ public record OnboardingRequest(
         Set<@NotNull Membership> memberships,
 
         Boolean agreePrivacy,
-        Boolean agreeTerms,
-        Boolean agreeMarketing
+        Boolean agreeTerms
 ) {
 }
