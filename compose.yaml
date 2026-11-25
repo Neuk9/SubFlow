@@ -1,0 +1,7 @@
+# 기본 Compose 파일이다.
+# `docker compose up -d --build` 는 운영 스택(앱 + PostgreSQL)을 기동한다.
+# 로컬 개발용 PostgreSQL만 띄우려면 `docker compose -f docker-compose.yml up -d` 를 사용한다.
+#
+# Compose 기본 탐색 순서(compose.yaml > docker-compose.yml)에 따라 이 파일이 먼저 선택된다.
+include:
+  - compose.prod.yml
