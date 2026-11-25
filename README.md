@@ -73,15 +73,15 @@ SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 ### 4. 로컬 PostgreSQL (개발용, 선택)
 
 ```bash
-docker compose up -d
+docker compose -f docker-compose.yml up -d
 ```
 
-저장소의 `docker-compose.yml`은 **로컬 개발 전용**입니다. PostgreSQL `5432` 포트를 호스트에 공개하고 `docker/initdb`를 마운트하므로 운영 배포에는 사용하지 않습니다.
+저장소의 `docker-compose.yml`은 **로컬 개발 전용**입니다. PostgreSQL `5432` 포트를 호스트에 공개하고 `docker/initdb`를 마운트하므로 운영 배포에는 사용하지 않습니다. 기본 Compose 파일은 운영 스택을 가리키는 `compose.yaml`이므로, 로컬 개발에서는 `-f docker-compose.yml`을 명시해야 합니다.
 
 Compose의 PostgreSQL에 붙여 앱을 실행하려면 데이터소스 환경변수를 덮어씁니다.
 
 ```bash
-docker compose up -d
+docker compose -f docker-compose.yml up -d
 
 SPRING_PROFILES_ACTIVE=local \
 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/subflow \
@@ -97,8 +97,10 @@ DB_PASSWORD=subflow \
 ```bash
 cp .env.example .env
 # .env에 GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, DB_PASSWORD, AUDIT_HASH_PEPPER 등 실제 값 입력
-docker compose -f compose.prod.yml up -d --build
+docker compose up -d --build
 ```
+
+`compose.yaml`이 `compose.prod.yml`을 포함하므로 서버에서는 `-f compose.prod.yml` 없이 위 명령만 실행하면 됩니다.
 
 - `.env`의 `DB_PASSWORD`와 `AUDIT_HASH_PEPPER`에는 기본값이 없습니다. 누락하거나 pepper를 예시값(`change-me-in-production`)으로 두면 **기동에 실패**합니다.
 - 앱은 `SPRING_PROFILES_ACTIVE=prod,oauth`로 기동하며, Google OAuth2 설정이 없으면 **기동에 실패**합니다.
