@@ -25,6 +25,7 @@ import com.subflow.subscription.importer.parser.CsvParser;
 import com.subflow.subscription.importer.parser.CsvRow;
 import com.subflow.subscription.importer.parser.ParsedPayment;
 import com.subflow.subscription.importer.parser.ValueParser;
+import com.subflow.subscription.importer.parser.XlsxParser;
 import com.subflow.subscription.importer.validation.CsvLimits;
 import com.subflow.subscription.importer.validation.CsvUploadValidator;
 import com.subflow.subscription.repository.BillingRecordRepository;
@@ -65,6 +66,7 @@ public class CsvImportService {
 
     private final CsvUploadValidator csvUploadValidator = new CsvUploadValidator();
     private final CsvParser csvParser = new CsvParser();
+    private final XlsxParser xlsxParser = new XlsxParser();
     private final ColumnDetector columnDetector = new ColumnDetector();
     private final SubscriptionMatcher subscriptionMatcher = new SubscriptionMatcher();
     private final CandidateFinder candidateFinder = new CandidateFinder();
@@ -191,7 +193,9 @@ public class CsvImportService {
         byte[] content = csvUploadValidator.validate(file);
         CsvDocument document;
         try {
-            document = csvParser.parse(content, CsvLimits.DEFAULT);
+            document = CsvUploadValidator.isXlsx(file.getOriginalFilename())
+                    ? xlsxParser.parse(content, CsvLimits.DEFAULT)
+                    : csvParser.parse(content, CsvLimits.DEFAULT);
         } catch (UncheckedIOException | IllegalStateException e) {
             throw new BusinessException(ErrorCode.UNSUPPORTED_CSV);
         }

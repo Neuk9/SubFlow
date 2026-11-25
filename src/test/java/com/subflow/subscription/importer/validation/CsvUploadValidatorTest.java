@@ -2,6 +2,7 @@ package com.subflow.subscription.importer.validation;
 
 import com.subflow.global.exception.BusinessException;
 import com.subflow.global.exception.ErrorCode;
+import com.subflow.support.XlsxTestFiles;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
@@ -88,6 +89,28 @@ class CsvUploadValidatorTest {
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.EMPTY_IMPORT_FILE);
+    }
+
+    @Test
+    @DisplayName("XLSX는 바이너리 NUL 바이트가 있어도 허용한다")
+    void acceptsXlsxBinaryContent() {
+        byte[] content = XlsxTestFiles.of(java.util.List.of(
+                java.util.List.of("거래일", "이용처", "승인금액"),
+                java.util.List.of("2026-11-05", "넷플릭스", "17000")));
+        var file = new MockMultipartFile("file", "data.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", content);
+
+        assertThat(validator.validate(file)).isEqualTo(content);
+    }
+
+    @Test
+    @DisplayName("대문자 XLSX 확장자도 허용한다")
+    void acceptsUppercaseXlsxExtension() {
+        byte[] content = XlsxTestFiles.of(java.util.List.of(java.util.List.of("a", "b")));
+        var file = new MockMultipartFile("file", "DATA.XLSX",
+                "application/octet-stream", content);
+
+        assertThat(validator.validate(file)).isNotEmpty();
     }
 
     @Test

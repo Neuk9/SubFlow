@@ -26,6 +26,12 @@ class ValueParserTest {
     }
 
     @Test
+    @DisplayName("원화 기호가 붙은 금액을 파싱한다")
+    void parsesAmountWithWonSymbol() {
+        assertThat(ValueParser.parseAmount("₩17,000")).contains(new BigDecimal("17000"));
+    }
+
+    @Test
     @DisplayName("빈 값이나 0원은 거부한다")
     void rejectsBlankOrZeroAmount() {
         assertThat(ValueParser.parseAmount("")).isEmpty();

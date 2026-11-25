@@ -6,7 +6,7 @@
 
 - **캘린더 중심 대시보드**: 이번 달 결제 일정과 결제 목록을 한 화면에 표시
 - **구독 관리**: 등록, 수정, 해지, 일시 정지와 결제일·월 환산 계산
-- **CSV 내역 가져오기**: 카드/은행 내역 파일을 올려 기존 구독과 매칭하고, 반복 결제는 신규 구독 후보로 제안
+- **내역 가져오기 (CSV·XLSX)**: 카드/은행 내역 파일을 올려 기존 구독과 매칭하고, 반복 결제는 신규 구독 후보로 제안
   - UTF-8/CP949 인코딩 자동 감지
   - 컬럼 자동 탐지, 실패 시 수동 매핑
   - 같은 파일을 다시 올려도 결제 기록이 중복되지 않음
@@ -33,7 +33,7 @@
 | View | Mustache |
 | Database | H2 (local) / PostgreSQL 17 (prod) |
 | ORM | Spring Data JPA, Flyway |
-| CSV | Apache Commons CSV 1.14.1 |
+| 내역 파일 | Apache Commons CSV 1.14.1, Apache POI 5.5.1 (XLSX) |
 | 인증 | Google OAuth2 (prod) / 생략 (local) |
 | Test | JUnit 5 |
 
@@ -163,7 +163,7 @@ ingress:
 4. **구독 행의 `⋯` 메뉴**
    - 함께 쓰기: 넷플릭스 공유 멤버 2명, 정산 체크
    - 해지 방법: 서비스별 해지 경로와 링크
-5. **내역 가져오기**: `docs/samples/` 파일로 CSV 가져오기
+5. **내역 가져오기**: `docs/samples/` 파일로 CSV/XLSX 가져오기
    - `standard-utf8.csv`: 넷플릭스 매칭, Spotify 후보
    - `card-cp949.csv`: CP949 인코딩과 상단 안내문 처리
    - `bank-semicolon.csv`: 세미콜론 구분, 입금 행 제외
@@ -185,8 +185,8 @@ Flyway를 사용합니다. (`src/main/resources/db/migration`)
 | --- | --- | --- |
 | GET/POST | `/api/subscriptions` | 구독 목록/등록 |
 | GET | `/api/subscriptions/calendar` | 월별 결제 일정 |
-| POST | `/api/imports/preview` | CSV 미리보기 |
-| POST | `/api/imports/confirm` | CSV 가져오기 확정 |
+| POST | `/api/imports/preview` | 내역(CSV·XLSX) 미리보기 |
+| POST | `/api/imports/confirm` | 내역 가져오기 확정 |
 | GET | `/api/insights` | 절약 제안, 중복 구독 |
 | GET | `/api/services` | 서비스 카탈로그와 요금제 |
 | GET/PUT/DELETE | `/api/me` | 내 프로필 조회/수정/탈퇴 |
@@ -276,7 +276,7 @@ src/main/java/com/subflow/
     controller/           # 화면/API 컨트롤러
     domain/               # 구독, 결제 기록, 공유 멤버, 정산 기록
     dto/                  # 요청/응답
-    importer/             # CSV 파싱, 매칭, 후보 판별
+    importer/             # CSV/XLSX 파싱, 매칭, 후보 판별
     repository/
     scheduler/            # 결제 갱신, 알림, 만료 배치
     service/              # 구독, 가져오기, 인사이트, 공유 정산

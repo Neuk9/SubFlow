@@ -442,7 +442,7 @@
         </div>
     </div>
 </div>
-<!-- CSV 내역 가져오기 모달 -->
+<!-- 내역 가져오기 모달 -->
 <div class="modal fade" id="importModal" tabindex="-1" aria-labelledby="importModalTitle" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable modal-lg">
         <div class="modal-content">
@@ -454,12 +454,12 @@
                 <div id="importStep1">
                     <div class="sf-import-drop" id="importDropZone" role="button" tabindex="0"
                          data-action="pick-import-file">
-                        <i class="bi bi-filetype-csv"></i>
-                        <strong>CSV 파일을 선택하거나 여기로 끌어다 놓으세요</strong>
+                        <i class="bi bi-file-earmark-spreadsheet"></i>
+                        <strong>CSV 또는 엑셀(XLSX) 파일을 선택하거나 여기로 끌어다 놓으세요</strong>
                         <small>카드/은행 앱에서 내려받은 내역 파일 · 최대 5MB, 5,000건</small>
                         <span id="importFileName" class="sf-import-filename d-none"></span>
                     </div>
-                    <input type="file" id="importFileInput" accept=".csv,text/csv" class="d-none">
+                    <input type="file" id="importFileInput" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" class="d-none">
                 </div>
 
                 <div id="importStep2" class="d-none">

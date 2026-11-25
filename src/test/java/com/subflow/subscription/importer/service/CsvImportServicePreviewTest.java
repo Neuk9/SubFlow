@@ -14,6 +14,7 @@ import com.subflow.subscription.importer.dto.SkippedRow;
 import com.subflow.subscription.repository.BillingRecordRepository;
 import com.subflow.subscription.repository.SubscriptionRepository;
 import com.subflow.subscription.service.SubscriptionFinder;
+import com.subflow.support.XlsxTestFiles;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -229,6 +230,23 @@ class CsvImportServicePreviewTest {
                 .isEqualTo(ErrorCode.EMPTY_IMPORT_FILE);
     }
 
+    @Test
+    @DisplayName("XLSX 파일도 미리보기로 가져온다")
+    void buildsPreviewFromXlsx() {
+        givenOwner(List.of(subscription(1L, "넷플릭스 프리미엄", "17000", 25)), List.of());
+        MockMultipartFile file = xlsx(List.of(
+                List.of("거래일", "이용처", "승인금액"),
+                List.of(LocalDate.of(2026, 9, 25), "넷플릭스", 17000)));
+
+        ImportPreviewResponse response = service.preview(file, null, null, null, true);
+
+        assertThat(response.needsMapping()).isFalse();
+        assertThat(response.rows()).hasSize(1);
+        assertThat(response.rows().get(0).merchant()).isEqualTo("넷플릭스");
+        assertThat(response.rows().get(0).billingDate()).isEqualTo(LocalDate.of(2026, 9, 25));
+        assertThat(response.rows().get(0).amount()).isEqualByComparingTo("17000");
+    }
+
     private void givenOwner(List<Subscription> subscriptions, List<BillingRecord> records) {
         given(subscriptionFinder.currentOwnerEmail()).willReturn(OWNER);
         given(subscriptionRepository.findAllByOwnerEmailOrderByNextBillingDateAsc(OWNER))
@@ -238,6 +256,12 @@ class CsvImportServicePreviewTest {
 
     private MockMultipartFile csv(String content) {
         return new MockMultipartFile("file", "test.csv", "text/csv", content.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private MockMultipartFile xlsx(List<List<Object>> rows) {
+        return new MockMultipartFile("file", "test.xlsx",
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                XlsxTestFiles.of(rows));
     }
 
     private MockMultipartFile csvFromResource(String name) throws IOException {
