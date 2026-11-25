@@ -59,6 +59,12 @@ class DeploymentConfigTest {
     }
 
     @Test
+    void composePinsContainerPortTo8080() throws Exception {
+        String compose = Files.readString(Path.of("compose.prod.yml"));
+        assertThat(compose).contains("SERVER_PORT: 8080");
+    }
+
+    @Test
     void productionRequiresDbPasswordWithoutFallback() throws Exception {
         String compose = Files.readString(Path.of("compose.prod.yml"));
         assertThat(compose).contains("${DB_PASSWORD:?DB_PASSWORD is required}");
