@@ -39,7 +39,7 @@ public class User extends BaseTimeEntity {
     @Column(length = 100)
     private String name;
 
-    @Column(name = "picture_url", length = 500)
+    @Column(name = "picture_url", length = 2048)
     private String pictureUrl;
 
     @Column(name = "birth_year")
