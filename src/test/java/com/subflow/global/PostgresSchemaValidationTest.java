@@ -2,8 +2,12 @@ package com.subflow.global;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 실제 PostgreSQL 에 Flyway 마이그레이션을 적용한 뒤 Hibernate {@code validate} 로
@@ -23,7 +27,20 @@ import org.springframework.test.context.ActiveProfiles;
 @EnabledIfEnvironmentVariable(named = "CI", matches = "true")
 class PostgresSchemaValidationTest {
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @Test
     void contextLoads() {
+    }
+
+    @Test
+    void userPictureUrlColumnAllowsLongUrls() {
+        Integer maxLength = jdbcTemplate.queryForObject(
+                "select character_maximum_length from information_schema.columns"
+                        + " where table_name = 'users' and column_name = 'picture_url'",
+                Integer.class);
+
+        assertThat(maxLength).isNotNull().isGreaterThanOrEqualTo(2048);
     }
 }
