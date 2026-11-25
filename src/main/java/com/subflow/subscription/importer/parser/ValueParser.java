@@ -47,6 +47,7 @@ public final class ValueParser {
                 .replace("\"", "")
                 .replace(",", "")
                 .replace("원", "")
+                .replace("₩", "")
                 .replace(" ", "");
 
         boolean negative = value.startsWith("-");
