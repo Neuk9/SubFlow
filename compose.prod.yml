@@ -17,6 +17,9 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: prod,oauth
       SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME:-subflow}
+      # 컨테이너 내부 포트는 항상 8080으로 고정한다. 호스트 노출은 APP_PORT로 조절한다.
+      # .env의 SERVER_PORT가 주입되면 healthcheck와 포트 매핑(8080)이 어긋나 접속이 끊긴다.
+      SERVER_PORT: 8080
     depends_on:
       db:
         condition: service_healthy
