@@ -58,7 +58,6 @@ function loadProfile() {
                 const button = chip('memberships', value);
                 if (button) button.classList.add('active');
             });
-            document.getElementById('agreeMarketing').checked = Boolean(profile.marketingAgreed);
 
             if (profile.onboardingCompleted) {
                 isEditMode = true;
@@ -94,7 +93,6 @@ async function submitOnboarding(event) {
     const householdValue = document.getElementById('householdSize').value;
     const agreePrivacy = document.getElementById('agreePrivacy').checked;
     const agreeTerms = document.getElementById('agreeTerms').checked;
-    const agreeMarketing = document.getElementById('agreeMarketing').checked;
 
     if (!birthYear) {
         showError('출생연도를 입력해 주세요.');
@@ -126,8 +124,7 @@ async function submitOnboarding(event) {
             interests: [...selectedInterests],
             memberships: [...selectedMemberships],
             agreePrivacy,
-            agreeTerms,
-            agreeMarketing
+            agreeTerms
         };
 
     const button = document.getElementById('onboardingSubmit');

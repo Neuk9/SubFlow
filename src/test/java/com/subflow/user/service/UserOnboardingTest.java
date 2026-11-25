@@ -16,7 +16,6 @@ import com.subflow.user.repository.UserRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
@@ -34,6 +33,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
@@ -65,30 +65,26 @@ class UserOnboardingTest {
         userService.completeOnboarding(EMAIL, new OnboardingRequest(
                 2002, Occupation.UNIVERSITY, 3,
                 Set.of(Category.OTT), Set.of(Membership.SKT),
-                true, true, false));
+                true, true));
 
         assertThat(user.isOnboardingCompleted()).isTrue();
         assertThat(user.getBirthYear()).isEqualTo(2002);
         assertThat(user.getOccupation()).isEqualTo(Occupation.UNIVERSITY);
         assertThat(user.interestSet()).containsExactly(Category.OTT);
         assertThat(user.membershipSet()).containsExactly(Membership.SKT);
-        then(consentRepository).should(times(3)).save(any(UserConsent.class));
+        then(consentRepository).should(times(2)).save(any(UserConsent.class));
     }
 
     @Test
-    @DisplayName("마케팅 미동의도 기록된다")
-    void recordsMarketingOptOut() {
-        User user = user();
-        given(userRepository.findByEmail(EMAIL)).willReturn(Optional.of(user));
+    @DisplayName("마케팅 동의는 더 이상 변경할 수 없다")
+    void rejectsMarketingConsentUpdate() {
+        assertThatThrownBy(() ->
+                userService.updateConsent(EMAIL, new ConsentUpdateRequest(ConsentType.MARKETING, true)))
+                .isInstanceOf(BusinessException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
 
-        userService.completeOnboarding(EMAIL, new OnboardingRequest(
-                2002, Occupation.UNIVERSITY, 3, Set.of(), Set.of(), true, true, false));
-
-        ArgumentCaptor<UserConsent> captor = ArgumentCaptor.forClass(UserConsent.class);
-        then(consentRepository).should(times(3)).save(captor.capture());
-        assertThat(captor.getAllValues())
-                .filteredOn(consent -> consent.getConsentType() == ConsentType.MARKETING)
-                .allSatisfy(consent -> assertThat(consent.isAgreed()).isFalse());
+        then(consentRepository).should(never()).save(any(UserConsent.class));
     }
 
     @Test
@@ -98,7 +94,7 @@ class UserOnboardingTest {
         given(userRepository.findByEmail(EMAIL)).willReturn(Optional.of(user));
 
         assertThatThrownBy(() -> userService.completeOnboarding(EMAIL, new OnboardingRequest(
-                2013, Occupation.HIGH_SCHOOL, 1, Set.of(), Set.of(), true, true, false)))
+                2013, Occupation.HIGH_SCHOOL, 1, Set.of(), Set.of(), true, true)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.UNDER_MINIMUM_AGE);
@@ -112,7 +108,7 @@ class UserOnboardingTest {
         given(userRepository.findByEmail(EMAIL)).willReturn(Optional.of(user));
 
         assertThatThrownBy(() -> userService.completeOnboarding(EMAIL, new OnboardingRequest(
-                2002, Occupation.UNIVERSITY, 1, Set.of(), Set.of(), false, true, false)))
+                2002, Occupation.UNIVERSITY, 1, Set.of(), Set.of(), false, true)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.REQUIRED_CONSENT_MISSING);
@@ -120,12 +116,12 @@ class UserOnboardingTest {
     }
 
     @Test
-    @DisplayName("선택 동의를 변경하면 기록을 저장한다")
+    @DisplayName("수신 동의를 변경하면 기록을 저장한다")
     void updatesConsent() {
         User user = user();
         given(userRepository.findByEmail(EMAIL)).willReturn(Optional.of(user));
 
-        userService.updateConsent(EMAIL, new ConsentUpdateRequest(ConsentType.MARKETING, false));
+        userService.updateConsent(EMAIL, new ConsentUpdateRequest(ConsentType.NOTIFICATION, false));
 
         then(consentRepository).should().save(any(UserConsent.class));
     }
@@ -136,7 +132,7 @@ class UserOnboardingTest {
         given(userRepository.findByEmail(EMAIL)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> userService.completeOnboarding(EMAIL, new OnboardingRequest(
-                2002, Occupation.UNIVERSITY, 1, Set.of(), Set.of(), true, true, false)))
+                2002, Occupation.UNIVERSITY, 1, Set.of(), Set.of(), true, true)))
                 .isInstanceOf(BusinessException.class)
                 .extracting("errorCode")
                 .isEqualTo(ErrorCode.USER_NOT_FOUND);

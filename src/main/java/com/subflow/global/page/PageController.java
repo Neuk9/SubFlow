@@ -25,6 +25,7 @@ public class PageController {
 
     @GetMapping("/onboarding")
     public String onboarding(Model model) {
+        model.addAttribute("authEnabled", authProperties.mode() == AuthMode.OAUTH);
         model.addAttribute("categories", Category.values());
         model.addAttribute("occupations", Occupation.values());
         model.addAttribute("memberships", Membership.values());

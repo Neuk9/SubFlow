@@ -45,7 +45,6 @@ function loadProfile() {
                     '<div><dt>안내</dt><dd>프로필 정보를 불러오지 못했습니다.</dd></div>';
                 return;
             }
-            document.getElementById('marketingAgreed').checked = Boolean(profile.marketingAgreed);
             document.getElementById('notificationAgreed').checked = Boolean(profile.notificationAgreed);
             const interests = (profile.interests || []).map(v => CATEGORY_LABELS[v] || v).join(', ');
             const memberships = (profile.memberships || []).map(v => MEMBERSHIP_LABELS[v] || v).join(', ');
